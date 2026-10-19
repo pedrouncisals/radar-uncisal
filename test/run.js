@@ -75,6 +75,15 @@ s = A.search(r6, 'ODILON MÁXIMO');
 check(s && s.outros.length >= 1, 'busca separa o que é de outros órgãos', s && { u: s.uncisal.length, o: s.outros.length });
 check(A.search(r6, 'ab') === null && A.search(r6, '123') === null, 'busca ignora termo curto');
 
+// --- Lista de vigia
+const v = A.vigiar(r6, ['maria laura dantas', '0500407-1', '05004071', '059.196.354-01', 'ODILON', 'ab']);
+check(v[0].uncisal.length === 1 && v[0].uncisal[0].pagina === 4 && !v[0].recusado, 'vigia: nome sem acento acha na UNCISAL', v[0]);
+check(v[1].total >= 1 && v[2].total === v[1].total, 'vigia: matrícula com e sem hífen achando o mesmo', [v[1].total, v[2].total]);
+check(v[3].recusado === 'cpf' && v[3].total === 0, 'vigia: termo com cara de CPF é recusado', v[3]);
+check(v[4].uncisal.length === 0 && v[4].outros.length > 0, 'vigia: separa UNCISAL de outros órgãos', { u: v[4].uncisal.length, o: v[4].outros.length });
+check(v[5].recusado === 'curto', 'vigia: termo curto é recusado');
+check(!v.flatMap(x => [...x.uncisal, ...x.outros]).some(h => CPF_SHAPE.test(h.antes + h.achado + h.depois)), 'vigia: nenhum CPF nos trechos');
+
 // --- Relatório
 if (process.argv.includes('--show')) {
   for (const [k, r] of Object.entries(R)) {

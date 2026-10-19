@@ -232,6 +232,17 @@
     return out;
   }
 
-  root.RadarAnalyzer = { analyze, classify, search, maskCpf, isoDate };
+  // Lista de vigia: cada termo vira uma busca na edição inteira. Termo com cara de CPF é recusado:
+  // o texto já vem mascarado, então nunca acharia nada e pareceria "não saiu nada".
+  const pareceCpf = t => /^[\d.\-\s]+$/.test(t.trim()) && t.replace(/\D/g, '').length === 11;
+  function vigiar(r, termos, max = 20) {
+    return termos.map(termo => {
+      if (pareceCpf(termo)) return { termo, recusado: 'cpf', uncisal: [], outros: [], total: 0 };
+      const s = search(r, termo, max);
+      return s ? { termo, ...s } : { termo, recusado: 'curto', uncisal: [], outros: [], total: 0 };
+    });
+  }
+
+  root.RadarAnalyzer = { analyze, classify, search, vigiar, pareceCpf, maskCpf, isoDate };
   if (typeof module !== 'undefined') module.exports = root.RadarAnalyzer;
 })(typeof window !== 'undefined' ? window : globalThis);

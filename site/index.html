@@ -150,6 +150,65 @@ th{font-weight:600;color:var(--muted)}
 td.num{font-family:var(--f-mono);text-align:right}
 footer{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
 a{color:var(--accent)}
+.small{font-size:12px}
+
+/* Laterais: navegação (calendário, edições) e vigilância (lista de vigia, tendência, legenda).
+   >= 1280px viram colunas grudadas; abaixo disso o JS põe elas dentro da coluna (slots) */
+.slot{display:contents}
+.side{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px;align-items:start}
+@media (min-width:1280px){
+  .shell{display:flex;justify-content:center;align-items:flex-start;gap:24px;padding-inline:16px}
+  .shell > .wrap{flex:1 1 960px;max-width:960px;min-width:0;margin:0;padding-inline:0}
+  .side{display:flex;flex-direction:column;gap:16px;position:sticky;top:0;max-height:100vh;overflow-y:auto;overflow-x:hidden;padding-block:28px;flex:none;scrollbar-width:thin}
+  #nav{width:240px} #vig{width:280px}
+  .side{align-items:stretch} .side > .panel{width:100%}
+  .hide-wide{display:none!important}
+}
+.calhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.calhead span{font-weight:600;font-size:14px}
+.calhead button{width:32px;height:32px;padding:0;font-size:18px;line-height:1}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;text-align:center}
+.cal .wd{font:500 11px var(--f-mono);color:var(--muted);padding:2px 0}
+.cal .d{font:500 12px var(--f-mono);padding:5px 0;border-radius:6px;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:38px;border:1px solid transparent;background:none;color:var(--ink)}
+.cal span.d{color:var(--muted);opacity:.45}
+.cal button.d:hover{border-color:var(--accent)}
+.cal .d.hoje{border-color:var(--line)}
+.cal .d[aria-current="date"]{background:var(--accent-soft);border-color:var(--accent)}
+.dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--muted);display:inline-block;flex:none}
+.dot.alerta{background:var(--alert);border-color:var(--alert)}
+.dot.atencao{background:var(--warn);border-color:var(--warn)}
+.dot.rotina{background:var(--accent);border-color:var(--accent)}
+.legenda{display:flex;flex-direction:column;gap:6px;font-size:13px;margin:0;padding:0;list-style:none}
+.legenda li{display:flex;gap:8px;align-items:baseline}
+.edlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.edlist li{display:flex;align-items:center;gap:4px;font-size:13px;min-width:0}
+.edlist .edbtn{flex:1;display:flex;align-items:center;gap:8px;text-align:left;padding:6px 8px;border-color:transparent;background:none;font-size:13px;min-width:0}
+.edlist .edbtn:hover{border-color:var(--line)}
+.edlist .edtxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.edlist .n{margin-left:auto;font:12px var(--f-mono);color:var(--muted);white-space:nowrap}
+.edlist .icon{width:30px;height:30px;padding:0;flex:none;color:var(--muted)}
+.vigform{display:flex;gap:6px}
+.vigform input{font-size:14px;padding:8px 10px;min-width:0;flex:1}
+.vigform button{padding:8px 10px;font-size:13px;flex:none}
+.termos{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.termos li{display:flex;align-items:center;gap:2px;background:var(--calm-soft);border-radius:999px;padding:2px 2px 2px 10px;font-size:13px;max-width:100%;overflow-wrap:anywhere}
+.termos button{border:0;background:none;width:28px;height:28px;padding:0;border-radius:50%;color:var(--muted);flex:none}
+.msg-err{color:var(--alert)}
+#vigiados{background:var(--sheet);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:12px;padding:16px 20px;gap:12px}
+#vigiados .vterm{display:flex;flex-direction:column;gap:6px}
+#vigiados h3{font:600 14px var(--f-body);margin:4px 0 0}
+.spark{display:flex;flex-direction:column;gap:2px}
+.spark .lab{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.spark .lab b{font:500 12px var(--f-mono);color:var(--ink)}
+.spark svg{width:100%;height:56px;display:block;overflow:visible}
+.spark .base{stroke:var(--line);stroke-width:1}
+.spark polyline{fill:none;stroke-width:1.6}
+.spark .s-alerta{stroke:var(--alert)} .spark circle.s-alerta{fill:var(--alert)}
+.spark .s-atencao{stroke:var(--warn)} .spark circle.s-atencao{fill:var(--warn)}
+.spark .s-exon{stroke:var(--accent)} .spark circle.s-exon{fill:var(--accent)}
+.spark circle.pt{cursor:pointer;stroke-width:0}
+.spark circle.pt:hover,.spark circle.pt:focus-visible{stroke:var(--ink);stroke-width:2;outline:none}
+.spark circle.cur{stroke:var(--sheet);stroke-width:2}
 
 /* Cartão que vira imagem pra mandar no WhatsApp: sempre no tema claro, fora da tela */
 .shot{--paper:#f4f7f6; --sheet:#ffffff; --ink:#13222b; --muted:#56666e; --line:#d6dfdc; --accent:#0d6b5f; --alert:#b42318; --warn:#a15c07;
@@ -163,7 +222,8 @@ a{color:var(--accent)}
   :root, :root:not([data-theme="light"]), :root[data-theme="dark"]{
     --paper:#fff; --sheet:#fff; --ink:#13222b; --muted:#56666e; --line:#d6dfdc; --accent:#0d6b5f; --accent-soft:#e1efec;
     --alert:#b42318; --alert-soft:#fbe9e7; --warn:#a15c07; --warn-soft:#fbf0dc; --calm:#4b5d66; --calm-soft:#e9eef0; --mark:#fff0b3; color-scheme:light }
-  .inputs,.progress,.actions,#filtros,#busca,#historico,.shot,details summary{display:none!important}
+  .inputs,.progress,.actions,#filtros,#busca,.side,#vigiados,.shot,details summary{display:none!important}
+  .shell{display:block!important}
   .wrap{padding:0;gap:18px}
   .act,.verdict,.panel{break-inside:avoid}
 }
@@ -171,7 +231,21 @@ a{color:var(--accent)}
 
 </head>
 <body>
-<div class="wrap">
+<div class="shell" id="shell">
+<aside class="side" id="nav" aria-label="Navegação pelas edições">
+  <div class="panel">
+    <h3>Calendário do DOE</h3>
+    <div class="calhead"><button type="button" id="cal-prev" aria-label="Mês anterior">‹</button><span id="cal-mes" aria-live="polite"></span><button type="button" id="cal-next" aria-label="Próximo mês">›</button></div>
+    <div class="cal" id="cal"></div>
+    <span class="muted small"><span class="dot rotina"></span> analisado, na cor do pior nível · <span class="dot"></span> ainda não analisado</span>
+  </div>
+  <div class="panel">
+    <h3>Edições analisadas</h3>
+    <ul class="edlist" id="hist"></ul>
+    <span class="muted small">Guardado só neste navegador · <button type="button" class="linkbtn" id="limpar">Apagar histórico</button></span>
+  </div>
+</aside>
+<div class="wrap" role="main">
   <header>
     <div class="topbar">
       <div class="eyebrow">Diário Oficial de Alagoas <span>· leitura da UNCISAL</span></div>
@@ -183,8 +257,8 @@ a{color:var(--accent)}
     </div>
     <div class="inputs">
       <button class="today" id="today" type="button">Analisar o DOE de hoje<small id="today-sub">consultando as edições…</small></button>
-      <div class="recent" id="recent"></div>
-      <div class="recent"><label for="dia">Escolher data:</label><input type="date" id="dia"></div>
+      <div class="recent hide-wide" id="recent"></div>
+      <div class="recent hide-wide"><label for="dia">Escolher data:</label><input type="date" id="dia"></div>
       <label class="drop" id="drop" for="file">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h7l5 5v13H7z" stroke="currentColor" stroke-width="1.5" style="color:var(--accent)"/><path d="M14 3v5h5M12 11v6m0 0-2.5-2.5M12 17l2.5-2.5" stroke="currentColor" stroke-width="1.5" style="color:var(--accent)"/></svg>
         <div><strong>Ou solte o PDF</strong><span>Arraste o arquivo ou toque pra escolher</span></div>
@@ -198,7 +272,9 @@ a{color:var(--accent)}
   </div>
 
   <div id="verdict" class="verdict"></div>
+  <section id="vigiados" aria-label="Na sua lista de vigia" hidden></section>
   <div class="stats" id="stats"></div>
+  <div class="slot" id="slot-mid"></div>
 
   <section id="filtros" aria-label="Filtrar por tipo de ato" hidden>
     <div class="chips" id="filters"></div>
@@ -230,15 +306,35 @@ a{color:var(--accent)}
     <div id="flags"></div>
   </section>
 
-  <section id="historico">
-    <div class="sechead"><h2>Edições analisadas</h2><span class="muted">Guardado só neste navegador · <button type="button" class="linkbtn" id="limpar">Apagar histórico</button></span></div>
-    <div class="tablewrap"><table><thead><tr><th>Edição</th><th>Data</th><th style="text-align:right">Alertas</th><th style="text-align:right">Atenção</th><th style="text-align:right">Rotina</th><th style="text-align:right">Compras emergenciais</th><th style="text-align:right">Exonerações no Estado</th><th></th></tr></thead><tbody id="hist"></tbody></table></div>
-  </section>
+  <div class="slot" id="slot-end"></div>
 
   <footer>
     <span>O PDF vem direto do site da Imprensa Oficial pro seu navegador (ou do arquivo que você soltar) e é lido aqui, sem passar por outro servidor. CPFs aparecem mascarados.</span>
     <span>Edições em <a href="https://diario.imprensaoficial.al.gov.br/" target="_blank" rel="noopener">diario.imprensaoficial.al.gov.br</a>. O Radar acha por palavras-chave: confira o ato no DOE antes de tirar conclusão.</span>
   </footer>
+</div>
+<aside class="side" id="vig" aria-label="Vigilância">
+  <div class="panel">
+    <h3>Lista de vigia</h3>
+    <form class="vigform" id="vig-form"><input class="search" id="vig-termo" placeholder="Nome, matrícula ou setor" autocomplete="off" aria-label="Termo pra vigiar"><button type="submit">Adicionar</button></form>
+    <div class="small" id="vig-msg" role="status"></div>
+    <ul class="termos" id="vig-lista"></ul>
+    <span class="muted small">Cada edição aberta é varrida inteira por esses termos. Fica salvo só neste navegador. <button type="button" class="linkbtn" id="vig-limpar">Limpar lista</button></span>
+  </div>
+  <div class="panel">
+    <h3>Tendência</h3>
+    <div id="trend"></div>
+  </div>
+  <div class="panel">
+    <h3>Como ler</h3>
+    <ul class="legenda">
+      <li><span class="dot alerta"></span><span><b>Alerta</b>: exoneração, corte, contenção de despesas, rescisão ou repasse.</span></li>
+      <li><span class="dot atencao"></span><span><b>Atenção</b>: nomeação, remuneração, compra emergencial, dívida, ato anulado e afins.</span></li>
+      <li><span class="dot rotina"></span><span><b>Rotina</b>: férias, progressões, licenças, compras e atas.</span></li>
+    </ul>
+    <span class="muted small">O Radar acha por palavra-chave: confira o ato no DOE antes de tirar conclusão.</span>
+  </div>
+</aside>
 </div>
 <div class="shot" id="shot" aria-hidden="true"></div>
 
@@ -323,6 +419,7 @@ function render(r, isSample, salvo){
   renderFilters();
   renderActs();
   runSearch();
+  renderVigiados();
   renderHistory();
 }
 
@@ -381,6 +478,9 @@ function renderActs(){
   $('routine-wrap').open = !!(filtro && rot.length);
 }
 
+// Trecho achado pela busca ou pela lista de vigia (texto já mascarado), com página e link pro PDF
+const hitHtml = (r, h, cls) => `<div class="hit ${cls}"><span class="mono muted">${where(r, h)}${h.vezes > 1 ? ` · ${h.vezes} vezes` : ''}</span><br>${h.inicio ? '…' : ''}${esc(h.antes)}<mark>${esc(h.achado)}</mark>${esc(h.depois)}…</div>`;
+
 // Busca por nome ou matrícula: o que é da UNCISAL primeiro, depois "aparece também em outros órgãos"
 let searchTimer = 0;
 $('q').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 250); });
@@ -391,7 +491,7 @@ function runSearch(){
   const s = RadarAnalyzer.search(current, q);
   if (!s) { box.innerHTML = `<div class="empty">Digite pelo menos 3 letras ou 4 números.</div>`; return; }
   if (!s.total) { box.innerHTML = `<div class="empty">Nada com “${esc(q.trim())}” nesta edição.</div>`; return; }
-  const hit = (h, cls) => `<div class="hit ${cls}"><span class="mono muted">${where(current, h)}${h.vezes > 1 ? ` · ${h.vezes} vezes` : ''}</span><br>${h.inicio ? '…' : ''}${esc(h.antes)}<mark>${esc(h.achado)}</mark>${esc(h.depois)}…</div>`;
+  const hit = (h, cls) => hitHtml(current, h, cls);
   const more = l => l.length >= 40 ? `<span class="muted" style="font-size:13px">Mostrando os 40 primeiros. Refine a busca.</span>` : '';
   box.innerHTML = `<h3>Na UNCISAL · ${s.uncisal.length}</h3>`
     + (s.uncisal.length ? s.uncisal.map(h => hit(h, '')).join('') + more(s.uncisal) : `<span class="muted" style="font-size:13px">Nenhum ato da UNCISAL com esse termo.</span>`)
@@ -479,20 +579,29 @@ function emergSemana(r){
   r.acts.filter(a => a.tags.includes(EMERG)).forEach(a => { per[a.edicao]++; });
   return Object.values(per).reduce((a, b) => a + b, 0);
 }
+const nivelDe = x => x.alerta > 0 ? 'alerta' : x.atencao > 0 ? 'atencao' : 'rotina';
+const NIVEL_TXT = { alerta: 'com alerta', atencao: 'com ponto de atenção', rotina: 'só rotina' };
+// "DOE nº 2884 + DOE nº 2884 (suplemento)" → "nº 2884 + supl."
+const curto = key => key.replace(/ \+ DOE nº \d+ \(suplemento\)/g, ' + supl.').replace(/^DOE /, '');
+async function abrirDoHistorico(x){
+  if (salvos.has(x.key) && await abrirSalvo(x.key)) return;
+  if (x.iso) reanalisar(x.iso);
+  else status('Esse relatório não está guardado e não tem data. Solte o PDF de novo pra analisar.', true);
+}
+// Tudo que depende do histórico: lista de edições, calendário e tendência
 function renderHistory(){
   const h = loadHist();
   $('limpar').hidden = !h.length;
   $('hist').innerHTML = h.length
-    ? h.map((x, i) => `<tr><td>${salvos.has(x.key)
-          ? `<button type="button" class="linkbtn" data-open="${i}" title="Abrir o relatório guardado">${esc(x.key)}</button>`
-          : `${esc(x.key)}<br><span class="muted" style="font-size:12px">${x.iso ? 'relatório não guardado' : 'só os números; solte o PDF de novo'}</span>`}</td>
-        <td>${esc(x.data)}</td><td class="num">${x.alerta}</td><td class="num">${x.atencao}</td><td class="num">${x.rotina}</td><td class="num">${x.emerg ?? '–'}</td><td class="num">${x.exon}</td>
-        <td>${x.iso ? `<button type="button" class="mini" data-again="${esc(x.iso)}" title="Baixar do DOE e analisar com as regras atuais">Analisar de novo</button>` : ''}</td></tr>`).join('')
-    : `<tr><td colspan="8" class="muted">As edições que você analisar aparecem aqui, pra comparar um dia com o outro e abrir de novo.</td></tr>`;
-  $('hist').querySelectorAll('[data-open]').forEach(b => b.onclick = async () => {
-    if (!await abrirSalvo(h[+b.dataset.open].key)) status('Esse relatório não está mais guardado neste navegador. Use "Analisar de novo".', true);
-  });
+    ? h.map((x, i) => `<li><button type="button" class="edbtn" data-i="${i}" title="${salvos.has(x.key) ? 'Abrir o relatório guardado' : 'Relatório não guardado: analisar de novo'}">
+          <span class="dot ${nivelDe(x)}" aria-hidden="true"></span><span class="edtxt">${esc(curto(x.key))}${x.iso ? ` · ${ddmm(x.iso)}` : ''}${salvos.has(x.key) ? '' : ' <span class="muted">(não guardado)</span>'}</span>
+          <span class="n" aria-label="${x.alerta} alertas, ${x.atencao} atenção, ${x.rotina} rotina">${x.alerta}·${x.atencao}·${x.rotina}</span></button>
+        ${x.iso ? `<button type="button" class="icon" data-again="${esc(x.iso)}" aria-label="Analisar de novo ${esc(curto(x.key))}" title="Analisar de novo com as regras atuais">↻</button>` : ''}</li>`).join('')
+    : `<li class="muted small">As edições que você analisar aparecem aqui, pra abrir de novo.</li>`;
+  $('hist').querySelectorAll('[data-i]').forEach(b => b.onclick = () => abrirDoHistorico(h[+b.dataset.i]));
   $('hist').querySelectorAll('[data-again]').forEach(b => b.onclick = () => reanalisar(b.dataset.again));
+  renderTrend();
+  renderCal();
 }
 $('limpar').addEventListener('click', async () => {
   if (!confirm('Apagar o histórico de edições e os relatórios guardados neste navegador?')) return;
@@ -502,6 +611,119 @@ $('limpar').addEventListener('click', async () => {
   renderHistory();
   renderDias();
 });
+
+// Tendência: 3 mini-gráficos (cada um com sua escala) das últimas 20 edições analisadas, por data
+function renderTrend(){
+  const pts = loadHist().filter(x => x.iso).sort((a, b) => a.iso.localeCompare(b.iso)).slice(-20);
+  if (pts.length < 2) { $('trend').innerHTML = `<p class="muted small" style="margin:0">Analise pelo menos duas edições pra ver a tendência.</p>`; return; }
+  const curKey = current && !isSampleView ? edLabel(current.editions) : '';
+  const W = 252, H = 48, P = 6, x = i => P + i * (W - 2 * P) / (pts.length - 1);
+  const serie = ([campo, rotulo, cls]) => {
+    const vals = pts.map(p => +p[campo] || 0), max = Math.max(1, ...vals), y = v => H - P - v / max * (H - 2 * P);
+    const circles = pts.map((p, i) => `<circle class="pt ${cls}${p.key === curKey ? ' cur' : ''}" cx="${x(i).toFixed(1)}" cy="${y(vals[i]).toFixed(1)}" r="${p.key === curKey ? 5 : 3.5}" tabindex="0" role="button" data-i="${i}"
+        aria-label="${esc(`${ddmm(p.iso)}, ${curto(p.key)}: ${vals[i]} ${rotulo.toLowerCase()}. Abrir edição`)}"><title>${esc(`${ddmm(p.iso)} · ${curto(p.key)}: ${vals[i]}`)}</title></circle>`).join('');
+    return `<div class="spark"><div class="lab"><span>${rotulo}</span><span>último <b>${vals[vals.length - 1]}</b> · máx. ${max}</span></div>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="group" aria-label="${esc(rotulo)} nas últimas ${pts.length} edições">
+        <line class="base" x1="${P}" x2="${W - P}" y1="${H - P}" y2="${H - P}"/>
+        <polyline class="${cls}" points="${pts.map((p, i) => `${x(i).toFixed(1)},${y(vals[i]).toFixed(1)}`).join(' ')}"/>${circles}</svg></div>`;
+  };
+  $('trend').innerHTML = `<div class="trend" style="display:flex;flex-direction:column;gap:12px">${[['alerta', 'Alertas', 's-alerta'], ['atencao', 'Atenção', 's-atencao'], ['exon', 'Exonerações no Estado', 's-exon']].map(serie).join('')}</div>
+    <span class="muted small">${ddmm(pts[0].iso)} a ${ddmm(pts[pts.length - 1].iso)} · toque num ponto pra abrir a edição</span>`;
+  $('trend').querySelectorAll('circle.pt').forEach(c => {
+    const go = () => abrirDoHistorico(pts[+c.dataset.i]);
+    c.addEventListener('click', go);
+    c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+}
+
+// Calendário do mês: bolinha na cor do pior nível do dia (analisado) ou vazia (não analisado); sem edição, apagado
+const MESES_NOME = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+let calYM = null, calSeq = 0;
+async function renderCal(){
+  const t = new Date();
+  if (!calYM) calYM = [t.getFullYear(), t.getMonth() + 1];
+  const [y, m] = calYM, seq = ++calSeq;
+  $('cal-mes').textContent = `${MESES_NOME[m - 1]} ${y}`;
+  $('cal-next').disabled = y > t.getFullYear() || (y === t.getFullYear() && m >= t.getMonth() + 1);
+  let lista = null;
+  try { lista = await mes(y, m); } catch (err) { console.error(err); }
+  if (seq !== calSeq) return;
+  const porDia = new Map((lista || []).map(x => [x.d, x]));
+  const rank = { alerta: 0, atencao: 1, rotina: 2 }, nivel = new Map();
+  loadHist().forEach(h => { if (!h.iso) return; const n = nivelDe(h), a = nivel.get(h.iso); if (!a || rank[n] < rank[a]) nivel.set(h.iso, n); });
+  const aberto = current && !isSampleView ? current.editions.map(e => e.iso).filter(Boolean).sort().pop() : '';
+  const hoje = hojeISO(), first = new Date(y, m - 1, 1).getDay(), n = new Date(y, m, 0).getDate();
+  const cells = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => `<span class="wd" aria-hidden="true">${d}</span>`);
+  for (let i = 0; i < first; i++) cells.push('<span></span>');
+  for (let d = 1; d <= n; d++) {
+    const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`, dia = porDia.get(iso), nv = nivel.get(iso);
+    const cls = `d${iso === hoje ? ' hoje' : ''}`;
+    cells.push(dia
+      ? `<button type="button" class="${cls}" data-iso="${iso}"${iso === aberto ? ' aria-current="date"' : ''} aria-label="${esc(`${d} de ${MESES_NOME[m - 1].toLowerCase()}: ${diaDesc(dia)}, ${nv ? 'analisado, ' + NIVEL_TXT[nv] : 'ainda não analisado'}`)}">${d}<span class="dot ${nv || ''}" aria-hidden="true"></span></button>`
+      : `<span class="${cls}" aria-hidden="true">${d}</span>`);
+  }
+  $('cal').innerHTML = cells.join('') + (lista ? '' : `<span class="muted small" style="grid-column:1/-1">Não consegui consultar o site do DOE.</span>`);
+  $('cal').querySelectorAll('button[data-iso]').forEach(b => b.onclick = () => abrirDia(porDia.get(b.dataset.iso)));
+}
+$('cal-prev').addEventListener('click', () => { calYM = mesAnterior(calYM); renderCal(); });
+$('cal-next').addEventListener('click', () => { const [y, m] = calYM; calYM = m === 12 ? [y + 1, 1] : [y, m + 1]; renderCal(); });
+
+// Lista de vigia: termos no localStorage; cada edição aberta é varrida inteira (texto já com CPF mascarado)
+const VKEY = 'radar-uncisal-vigia';
+function loadVig(){ try { const v = JSON.parse(localStorage.getItem(VKEY) || '[]'); return Array.isArray(v) ? v.filter(x => typeof x === 'string') : []; } catch { return []; } }
+function saveVig(l){ try { localStorage.setItem(VKEY, JSON.stringify(l)); } catch {} }
+function vigMsg(t, err){ $('vig-msg').textContent = t; $('vig-msg').className = 'small' + (err ? ' msg-err' : ' muted'); }
+function renderVigLista(){
+  const l = loadVig();
+  $('vig-lista').innerHTML = l.map((t, i) => `<li>${esc(t)}<button type="button" data-i="${i}" aria-label="Remover ${esc(t)} da lista de vigia" title="Remover">×</button></li>`).join('');
+  $('vig-lista').querySelectorAll('button').forEach(b => b.onclick = () => { const v = loadVig(); v.splice(+b.dataset.i, 1); saveVig(v); renderVigLista(); renderVigiados(); });
+  $('vig-limpar').hidden = !l.length;
+}
+$('vig-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const t = $('vig-termo').value.trim().replace(/\s+/g, ' ');
+  if (!t) return;
+  if (RadarAnalyzer.pareceCpf(t)) { vigMsg('CPF não é buscável (fica mascarado); use nome ou matrícula.', true); return; }
+  const digits = t.replace(/\D/g, '');
+  if (/^[\d.\-\s\/]+$/.test(t) ? digits.length < 4 : t.length < 3) { vigMsg('Use pelo menos 3 letras ou 4 números.', true); return; }
+  const l = loadVig();
+  if (l.some(x => x.toLowerCase() === t.toLowerCase())) { vigMsg('Esse termo já está na lista.', true); return; }
+  l.push(t); saveVig(l);
+  $('vig-termo').value = '';
+  vigMsg(`“${t}” entrou na lista.`);
+  renderVigLista(); renderVigiados();
+});
+$('vig-limpar').addEventListener('click', () => {
+  if (!confirm('Limpar a lista de vigia deste navegador?')) return;
+  saveVig([]); vigMsg(''); renderVigLista(); renderVigiados();
+});
+// Bloco no topo do relatório. Não entra na imagem, no resumo copiado nem no PDF.
+function renderVigiados(){
+  const box = $('vigiados'), termos = loadVig();
+  if (!termos.length || !current) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  if (!current.segmentos) { box.innerHTML = `<span class="muted small">A lista de vigia funciona nas edições analisadas; o exemplo não traz o texto completo.</span>`; return; }
+  const res = RadarAnalyzer.vigiar(current, termos, 10).filter(x => !x.recusado && x.total);
+  if (!res.length) { box.innerHTML = `<span class="muted small">Nenhum termo da sua lista de vigia (${termos.length}) aparece nesta edição.</span>`; return; }
+  box.innerHTML = `<div class="sechead"><h2>Na sua lista de vigia</h2><span class="muted">${res.length} de ${termos.length} ${termos.length > 1 ? 'termos' : 'termo'} com resultado</span></div>`
+    + res.map(x => `<div class="vterm"><h3>“${esc(x.termo)}” · ${x.uncisal.length} na UNCISAL · ${x.outros.length} em outros órgãos</h3>
+        ${x.uncisal.map(h => hitHtml(current, h, '')).join('')}
+        ${x.outros.length ? `<details><summary>Em outros órgãos (${x.outros.length})</summary><div class="hits" style="margin-top:6px">${x.outros.map(h => hitHtml(current, h, 'outro')).join('')}</div></details>` : ''}</div>`).join('');
+}
+
+// Onde as laterais ficam: colunas (>= 1280px); 640–1279 vigilância abaixo dos números e navegação no fim;
+// celular, as duas no fim (os chips de dias continuam no topo)
+const mqLarga = matchMedia('(min-width:1280px)'), mqMedia = matchMedia('(min-width:640px)');
+function layout(){
+  const nav = $('nav'), vig = $('vig');
+  if (mqLarga.matches) { $('shell').prepend(nav); $('shell').append(vig); }
+  else if (mqMedia.matches) { $('slot-mid').append(vig); $('slot-end').append(nav); }
+  else $('slot-end').append(nav, vig);
+}
+mqLarga.addEventListener('change', layout);
+mqMedia.addEventListener('change', layout);
+layout();
+renderVigLista();
 
 function summaryText(r){
   const c = r.counts, st = r.estado;
@@ -773,7 +995,7 @@ pintarTema();
 // Abertura: relatório do DOE mais recente se já foi analisado; senão o último guardado, avisando;
 // o exemplo só pra quem não tem nada guardado. Não baixa nada sozinho.
 let interagiu = false;
-['click', 'drop'].forEach(t => document.addEventListener(t, e => { if (e.target.closest && e.target.closest('#today, #recent, #drop, #hist, #dia, .actions')) interagiu = true; }, true));
+['click', 'drop'].forEach(t => document.addEventListener(t, e => { if (e.target.closest && e.target.closest('#today, #recent, #drop, #hist, #dia, #cal, #trend, .actions')) interagiu = true; }, true));
 $('dia').addEventListener('change', () => { interagiu = true; });
 async function telaInicial(){
   status('Abrindo…');
