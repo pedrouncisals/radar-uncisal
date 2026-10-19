@@ -190,6 +190,9 @@ a{color:var(--accent)}
 .edlist .edbtn:hover{border-color:var(--line)}
 .edlist .edtxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;line-height:1.35}
 .edlist .edtxt b{font-weight:600}
+.edlist .l1{display:flex;align-items:center;min-width:0}
+.edlist .l1 .t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.edlist .l1 .supl{flex:none}
 .edlist .edtxt small{display:block;font:12px var(--f-mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis}
 .edlist .edtxt.nsalvo{opacity:.75}
 .edlist .n{margin-left:auto;font:12px var(--f-mono);color:var(--muted);white-space:nowrap}
@@ -225,7 +228,8 @@ a{color:var(--accent)}
 .spark .lab .val{margin-left:auto;text-align:right}
 .spark .leg{display:flex;gap:10px;font-size:11px;color:var(--muted)}
 .spark .leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
-.supl{display:inline-flex;vertical-align:-2px;color:var(--muted);margin-left:2px}
+.supl{display:inline-block;font:500 10px/1 var(--f-mono);letter-spacing:.02em;color:var(--calm);background:var(--calm-soft);border-radius:999px;padding:3px 6px;margin-left:4px;vertical-align:1px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .termos li.vazia{background:none;padding:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px;border-radius:0}
 .sugs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .sugs button{font:500 12px var(--f-mono);padding:4px 10px;border-radius:999px}
@@ -629,7 +633,7 @@ function edicoesPorDia(){
   return [...[...porIso.values()].sort((a, b) => b.iso.localeCompare(a.iso)), ...semData];
 }
 const resumoNivel = x => x.alerta ? `${x.alerta} ${x.alerta > 1 ? 'alertas' : 'alerta'}` : x.atencao ? `${x.atencao} atenção` : 'rotina';
-const SUPL = '<span class="supl" role="img" aria-label="inclui suplemento" title="inclui suplemento"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8l4 4v10H8z"/><path d="M4 7v14h12"/></svg></span>';
+const SUPL = '<span class="supl" title="inclui suplemento"><span aria-hidden="true">supl.</span><span class="sr">inclui suplemento</span></span>';
 const HIST_VISIVEIS = 5;
 let histTodas = false;
 // Tudo que depende do histórico: lista de edições, calendário e tendência
@@ -638,7 +642,7 @@ function renderHistory(){
   $('limpar').hidden = !h.length;
   $('hist').innerHTML = h.length
     ? visiveis.map((x, i) => `<li><button type="button" class="edbtn" data-i="${i}" title="${esc(x.key)} · ${salvos.has(x.key) ? 'abrir o relatório guardado' : 'relatório não guardado: analisar de novo'}">
-          <span class="dot ${nivelDe(x)}" aria-hidden="true"></span><span class="edtxt${salvos.has(x.key) ? '' : ' nsalvo'}"><b>${x.iso ? ddmm(x.iso) : '—'}</b> · ${esc((x.key.match(/nº \d+/) || [curto(x.key)])[0])}${/suplemento/.test(x.key) ? ' ' + SUPL : ''}
+          <span class="dot ${nivelDe(x)}" aria-hidden="true"></span><span class="edtxt${salvos.has(x.key) ? '' : ' nsalvo'}"><span class="l1"><span class="t"><b>${x.iso ? ddmm(x.iso) : '—'}</b> · <span class="sr">DOE nº </span>${esc((x.key.match(/nº (\d+)/) || [, curto(x.key)])[1])}</span>${/suplemento/.test(x.key) ? SUPL : ''}</span>
           <small aria-label="${x.alerta} alertas, ${x.atencao} atenção, ${x.rotina} rotina${salvos.has(x.key) ? '' : '; relatório não guardado'}">${resumoNivel(x)}${salvos.has(x.key) ? '' : ' · não guardado'}</small></span></button>
         ${x.iso ? `<button type="button" class="icon" data-again="${esc(x.iso)}" aria-label="Analisar de novo ${esc(curto(x.key))}" title="Analisar de novo com as regras atuais">↻</button>` : ''}</li>`).join('')
       + (h.length > HIST_VISIVEIS ? `<li><button type="button" class="mais" id="hist-mais" aria-expanded="${histTodas}">${histTodas ? 'Mostrar só as 5 mais recentes' : `Ver todas (${h.length})`}</button></li>` : '')
