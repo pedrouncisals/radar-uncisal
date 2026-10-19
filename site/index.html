@@ -49,6 +49,11 @@ header p{margin:6px 0 0;max-width:60ch;color:var(--muted)}
 .today small{display:block;font:400 12px var(--f-mono);opacity:.9;margin-top:2px}
 .recent{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
 .recent button{font:500 12px var(--f-mono);padding:4px 8px}
+.recent button.seen{border-color:var(--accent);color:var(--accent)}
+.recent input{font:500 12px var(--f-mono);padding:3px 6px;border:1px solid var(--line);border-radius:8px;background:var(--sheet);color:var(--ink)}
+.sample.saved{color:var(--accent);background:var(--accent-soft)}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer}
+.mini{font:500 12px var(--f-body);padding:4px 8px}
 .drop{border:1.5px dashed var(--accent);background:var(--accent-soft);border-radius:10px;padding:18px 20px;display:flex;gap:14px;align-items:center;cursor:pointer;transition:background .15s}
 .drop:hover,.drop.over{background:color-mix(in srgb,var(--accent-soft) 70%, var(--accent) 12%)}
 .drop:focus-within{outline:2px solid var(--accent);outline-offset:2px}
@@ -169,6 +174,7 @@ a{color:var(--accent)}
     <div class="inputs">
       <button class="today" id="today" type="button">Analisar o DOE de hoje<small id="today-sub">consultando as edições…</small></button>
       <div class="recent" id="recent"></div>
+      <div class="recent"><label for="dia">Escolher data:</label><input type="date" id="dia"></div>
       <label class="drop" id="drop" for="file">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h7l5 5v13H7z" stroke="currentColor" stroke-width="1.5" style="color:var(--accent)"/><path d="M14 3v5h5M12 11v6m0 0-2.5-2.5M12 17l2.5-2.5" stroke="currentColor" stroke-width="1.5" style="color:var(--accent)"/></svg>
         <div><strong>Ou solte o PDF</strong><span>Arraste o arquivo ou toque pra escolher</span></div>
@@ -215,8 +221,8 @@ a{color:var(--accent)}
   </section>
 
   <section id="historico">
-    <div class="sechead"><h2>Edições analisadas</h2><span class="muted">Guardado só neste navegador</span></div>
-    <div class="tablewrap"><table><thead><tr><th>Edição</th><th>Data</th><th style="text-align:right">Alertas</th><th style="text-align:right">Atenção</th><th style="text-align:right">Rotina</th><th style="text-align:right">Compras emergenciais</th><th style="text-align:right">Exonerações no Estado</th></tr></thead><tbody id="hist"></tbody></table></div>
+    <div class="sechead"><h2>Edições analisadas</h2><span class="muted">Guardado só neste navegador · <button type="button" class="linkbtn" id="limpar">Apagar histórico</button></span></div>
+    <div class="tablewrap"><table><thead><tr><th>Edição</th><th>Data</th><th style="text-align:right">Alertas</th><th style="text-align:right">Atenção</th><th style="text-align:right">Rotina</th><th style="text-align:right">Compras emergenciais</th><th style="text-align:right">Exonerações no Estado</th><th></th></tr></thead><tbody id="hist"></tbody></table></div>
   </section>
 
   <footer>
@@ -261,17 +267,22 @@ function bigText(c){
 const isEmerg = a => a.sev === 'atencao' && a.tags.length === 1 && a.tags[0] === EMERG;
 const matches = a => !filtro || filtro === 'g:' + a.grupo || a.tags.some(t => filtro === 't:' + t);
 
-function render(r, isSample){
+// salvo: {em: timestamp} quando o relatório veio do histórico guardado neste navegador
+function render(r, isSample, salvo){
   current = r; isSampleView = !!isSample; filtro = null;
   const c = r.counts, e = r.editions, st = r.estado;
   const v = $('verdict');
   v.className = 'verdict ' + (c.alerta ? 'v-alerta' : c.atencao ? 'v-atencao' : 'v-ok');
   const dates = [...new Set(e.map(x => x.data).filter(Boolean))].join(', ');
   const pages = e.reduce((a, x) => a + (x.paginas || 0), 0);
+  const iso = e.map(x => x.iso).filter(Boolean).sort().pop();
+  const quando = salvo && new Date(salvo.em);
   v.innerHTML = `${isSample ? `<span class="sample">Exemplo com o DOE de 13/10/2026. Toque em "Analisar o DOE de hoje" ou solte um PDF.</span>` : ''}
+    ${quando ? `<span class="sample saved">Relatório guardado em ${quando.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}, analisado neste navegador.</span>` : ''}
     <div class="big">${esc(bigText(c))}</div>
     <div class="vmeta"><span>${esc(edLabel(e))}</span>${dates ? `<span>${esc(dates)}</span>` : ''}<span>${pages} páginas lidas</span><span>${c.alerta + c.atencao + c.rotina} atos da UNCISAL</span></div>
-    <div class="actions"><button id="copy" type="button">Copiar resumo</button><button id="img" type="button">Baixar imagem</button><button id="pdf" type="button">Salvar PDF</button></div>`;
+    <div class="actions"><button id="copy" type="button">Copiar resumo</button><button id="img" type="button">Baixar imagem</button><button id="pdf" type="button">Salvar PDF</button>${salvo && iso ? `<button id="again" type="button">Analisar de novo</button>` : ''}</div>`;
+  if ($('again')) $('again').onclick = () => reanalisar(iso);
   $('copy').onclick = copySummary;
   $('img').onclick = baixarImagem;
   $('pdf').onclick = () => window.print();
@@ -374,11 +385,66 @@ function runSearch(){
     + (s.outros.length ? `<h3>Aparece também em outros órgãos · ${s.outros.length}</h3>` + s.outros.map(h => hit(h, 'outro')).join('') + more(s.outros) : '');
 }
 
-const HKEY = 'radar-uncisal-historico';
-function loadHist(){ try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch { return []; } }
-function saveHist(r){
+// Histórico: contagens no localStorage (lista) e o relatório inteiro no IndexedDB (pra reabrir).
+// Tudo fica neste navegador; se o IndexedDB falhar (aba anônima etc.), a lista continua funcionando.
+const HKEY = 'radar-uncisal-historico', MAX_SALVOS = 30;
+const Relatorios = (() => {
+  let db = null;
+  const open = () => db || (db = new Promise((ok, fail) => {
+    const req = indexedDB.open('radar-uncisal', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('relatorios', { keyPath: 'key' });
+    req.onsuccess = () => ok(req.result);
+    req.onerror = () => fail(req.error);
+  }));
+  const tx = async (mode, fn) => {
+    const d = await open();
+    return new Promise((ok, fail) => {
+      const t = d.transaction('relatorios', mode), req = fn(t.objectStore('relatorios'));
+      t.oncomplete = () => ok(req && req.result);
+      t.onerror = t.onabort = () => fail(t.error);
+    });
+  };
+  return {
+    get: key => tx('readonly', s => s.get(key)),
+    put: v => tx('readwrite', s => s.put(v)),
+    keys: () => tx('readonly', s => s.getAllKeys()),
+    del: keys => tx('readwrite', s => { keys.forEach(k => s.delete(k)); }),
+    clear: () => tx('readwrite', s => s.clear()),
+  };
+})();
+let salvos = new Set();
+async function carregarSalvos(){ try { salvos = new Set(await Relatorios.keys()); } catch { salvos = new Set(); } }
+async function guardarRelatorio(key, r){
   try {
-    const key = edLabel(r.editions);
+    await Relatorios.put({ key, em: Date.now(), r });
+    salvos.add(key);
+    // fica com os 30 mais recentes da lista
+    const manter = new Set(loadHist().slice(0, MAX_SALVOS).map(h => h.key));
+    const sobra = [...salvos].filter(k => !manter.has(k));
+    if (sobra.length) { await Relatorios.del(sobra); sobra.forEach(k => salvos.delete(k)); }
+  } catch (err) { console.warn('Não deu pra guardar o relatório neste navegador', err); }
+}
+async function abrirSalvo(key){
+  try {
+    const x = await Relatorios.get(key);
+    if (!x) return false;
+    render(x.r, false, { em: x.em });
+    status('Relatório aberto do histórico deste navegador.');
+    scrollTo({ top: 0, behavior: 'smooth' });
+    return true;
+  } catch { return false; }
+}
+function loadHist(){
+  try {
+    const h = JSON.parse(localStorage.getItem(HKEY) || '[]');
+    // entradas antigas não tinham a data ISO: recalcula pela data por extenso
+    h.forEach(x => { if (!x.iso && x.data) x.iso = RadarAnalyzer.isoDate(x.data); });
+    return h;
+  } catch { return []; }
+}
+function saveHist(r){
+  const key = edLabel(r.editions);
+  try {
     const emergEd = {};
     r.acts.filter(a => a.tags.includes(EMERG)).forEach(a => { emergEd[a.edicao] = (emergEd[a.edicao] || 0) + 1; });
     r.editions.forEach(e => { emergEd[edKey(e)] = emergEd[edKey(e)] || 0; });
@@ -387,6 +453,7 @@ function saveHist(r){
       ...r.counts, exon: r.estado.exon, emerg: Object.values(emergEd).reduce((a, b) => a + b, 0), emergEd });
     localStorage.setItem(HKEY, JSON.stringify(h.slice(0, 40)));
   } catch {}
+  return guardarRelatorio(key, r);
 }
 // Compras emergenciais nos 7 dias até esta edição, contando cada edição uma vez só (histórico deste navegador)
 function emergSemana(r){
@@ -402,10 +469,27 @@ function emergSemana(r){
 }
 function renderHistory(){
   const h = loadHist();
+  $('limpar').hidden = !h.length;
   $('hist').innerHTML = h.length
-    ? h.map(x => `<tr><td>${esc(x.key)}</td><td>${esc(x.data)}</td><td class="num">${x.alerta}</td><td class="num">${x.atencao}</td><td class="num">${x.rotina}</td><td class="num">${x.emerg ?? '–'}</td><td class="num">${x.exon}</td></tr>`).join('')
-    : `<tr><td colspan="7" class="muted">As edições que você analisar aparecem aqui, pra comparar um dia com o outro.</td></tr>`;
+    ? h.map((x, i) => `<tr><td>${salvos.has(x.key)
+          ? `<button type="button" class="linkbtn" data-open="${i}" title="Abrir o relatório guardado">${esc(x.key)}</button>`
+          : `${esc(x.key)}<br><span class="muted" style="font-size:12px">${x.iso ? 'relatório não guardado' : 'só os números; solte o PDF de novo'}</span>`}</td>
+        <td>${esc(x.data)}</td><td class="num">${x.alerta}</td><td class="num">${x.atencao}</td><td class="num">${x.rotina}</td><td class="num">${x.emerg ?? '–'}</td><td class="num">${x.exon}</td>
+        <td>${x.iso ? `<button type="button" class="mini" data-again="${esc(x.iso)}" title="Baixar do DOE e analisar com as regras atuais">Analisar de novo</button>` : ''}</td></tr>`).join('')
+    : `<tr><td colspan="8" class="muted">As edições que você analisar aparecem aqui, pra comparar um dia com o outro e abrir de novo.</td></tr>`;
+  $('hist').querySelectorAll('[data-open]').forEach(b => b.onclick = async () => {
+    if (!await abrirSalvo(h[+b.dataset.open].key)) status('Esse relatório não está mais guardado neste navegador. Use "Analisar de novo".', true);
+  });
+  $('hist').querySelectorAll('[data-again]').forEach(b => b.onclick = () => reanalisar(b.dataset.again));
 }
+$('limpar').addEventListener('click', async () => {
+  if (!confirm('Apagar o histórico de edições e os relatórios guardados neste navegador?')) return;
+  try { localStorage.removeItem(HKEY); } catch {}
+  try { await Relatorios.clear(); } catch {}
+  salvos = new Set();
+  renderHistory();
+  renderDias();
+});
 
 function summaryText(r){
   const c = r.counts, st = r.estado;
@@ -493,34 +577,92 @@ async function readPdf(data, onPage){
   return pages;
 }
 
-// Lista de edições do site do DOE, agrupada por dia (edição + suplemento), mais recente primeiro
-let dias = null, busy = false;
-async function listarDias(){
-  const res = await fetch(`${API}/editions/published?page=1`);
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+// Edições do site do DOE por mês (editions/published/{ano}/{mês}), agrupadas por dia (edição + suplementos)
+let dias = null, mostrar = 10, busy = false, mesMaisAntigo = null;
+const meses = new Map();
+function agrupar(eds){
   const by = new Map();
-  for (const e of (await res.json()).editions || []) {
+  for (const e of eds) {
     const d = String(e.publication_date).slice(0, 10);
     if (!by.has(d)) by.set(d, []);
     by.get(d).push(e);
   }
-  return [...by].map(([d, eds]) => ({ d, eds: eds.sort((a, b) => a.suplement - b.suplement) }));
+  return [...by].map(([d, l]) => ({ d, eds: l.sort((a, b) => a.suplement - b.suplement || a.id - b.id) }));
+}
+async function mes(y, m){
+  const k = `${y}/${m}`;
+  if (!meses.has(k)) meses.set(k, fetch(`${API}/editions/published/${y}/${m}`)
+    .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+    .then(j => agrupar(j.editions || []))
+    .catch(err => { meses.delete(k); throw err; }));
+  return meses.get(k);
+}
+const mesAnterior = ([y, m]) => m === 1 ? [y - 1, 12] : [y, m - 1];
+// Junta meses pra trás até ter `n` dias (no máximo 24 meses)
+async function garantirDias(n){
+  if (!mesMaisAntigo) { const t = new Date(); mesMaisAntigo = [t.getFullYear(), t.getMonth() + 2]; dias = []; }
+  for (let i = 0; dias.length < n && i < 24; i++) {
+    mesMaisAntigo = mesAnterior(mesMaisAntigo);
+    const l = await mes(...mesMaisAntigo);
+    dias = [...dias, ...l.slice().reverse()];
+  }
+}
+async function acharDia(iso){
+  const l = await mes(+iso.slice(0, 4), +iso.slice(5, 7));
+  return l.find(x => x.d === iso) || null;
 }
 const ddmm = d => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const diaDesc = x => `nº ${x.eds[0].number} · ${ddmm(x.d)}${x.eds.some(e => e.suplement) ? ' + suplemento' : ''}`;
+// Mesma chave que edLabel() gera depois de ler os PDFs desse dia
+const diaKey = x => x.eds.map(e => `DOE nº ${e.number}${e.suplement ? ' (suplemento)' : ''}`).join(' + ');
 function hojeISO(){ const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; }
-function renderToday(){
-  const b = $('today');
+function renderDias(){
   if (!dias || !dias.length) return;
-  b.firstChild.textContent = dias[0].d === hojeISO() ? 'Analisar o DOE de hoje' : 'Analisar o último DOE';
-  $('today-sub').textContent = diaDesc(dias[0]);
-  $('recent').innerHTML = dias.length > 1 ? 'Outros dias:' + dias.slice(1, 4).map((x, i) => `<button type="button" data-i="${i + 1}" title="${esc(diaDesc(x))}">${ddmm(x.d)}</button>`).join('') : '';
-  $('recent').querySelectorAll('button').forEach(btn => btn.onclick = () => analisarDia(dias[+btn.dataset.i]));
+  $('today').firstChild.textContent = dias[0].d === hojeISO() ? 'Analisar o DOE de hoje' : 'Analisar o último DOE';
+  $('today-sub').textContent = diaDesc(dias[0]) + (salvos.has(diaKey(dias[0])) ? ' · já analisado' : '');
+  const outros = dias.slice(1, mostrar);
+  $('recent').innerHTML = outros.length
+    ? 'Outros dias:' + outros.map((x, i) => `<button type="button" data-i="${i + 1}" class="${salvos.has(diaKey(x)) ? 'seen' : ''}" title="${esc(diaDesc(x))}${salvos.has(diaKey(x)) ? ' · já analisado' : ''}">${ddmm(x.d)}</button>`).join('')
+      + `<button type="button" id="mais">Mais dias</button>`
+    : '';
+  $('recent').querySelectorAll('[data-i]').forEach(btn => btn.onclick = () => abrirDia(dias[+btn.dataset.i]));
+  if ($('mais')) $('mais').onclick = async () => {
+    $('mais').disabled = true; $('mais').textContent = 'Carregando…';
+    try { mostrar += 10; await garantirDias(mostrar); } catch (err) { console.error(err); status('Não consegui buscar mais dias no site do DOE.', true); }
+    renderDias();
+  };
 }
 function carregarDias(){
-  return listarDias().then(l => { dias = l; renderToday(); })
-    .catch(err => { console.error(err); $('today-sub').textContent = 'site do DOE fora do ar? Use o PDF abaixo'; });
+  return garantirDias(mostrar).then(renderDias)
+    .catch(err => { console.error(err); dias = null; mesMaisAntigo = null; $('today-sub').textContent = 'site do DOE fora do ar? Use o PDF abaixo'; });
 }
+// Dia já analisado neste navegador abre na hora (com "Analisar de novo"); senão baixa e analisa
+async function abrirDia(dia, forcar){
+  if (busy) return;
+  if (!forcar && salvos.has(diaKey(dia)) && await abrirSalvo(diaKey(dia))) return;
+  analisarDia(dia);
+}
+async function reanalisar(iso){
+  if (busy) return;
+  status(`Procurando a edição de ${ddmm(iso)}/${iso.slice(0, 4)} no site do DOE…`);
+  try {
+    const dia = await acharDia(iso);
+    if (!dia) { status(`Não achei DOE em ${ddmm(iso)}/${iso.slice(0, 4)} no site.`, true); return; }
+    abrirDia(dia, true);
+  } catch (err) { console.error(err); status('Não consegui consultar o site do DOE agora. Solte o PDF aqui pra analisar.', true); }
+}
+const inputDia = $('dia');
+inputDia.max = hojeISO();
+inputDia.addEventListener('change', async () => {
+  const iso = inputDia.value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+  status(`Procurando a edição de ${ddmm(iso)}/${iso.slice(0, 4)}…`);
+  try {
+    const dia = await acharDia(iso);
+    if (!dia) { status(`Sem DOE em ${ddmm(iso)}/${iso.slice(0, 4)} (fim de semana ou feriado?).`, true); return; }
+    abrirDia(dia);
+  } catch (err) { console.error(err); status('Não consegui consultar o site do DOE agora. Solte o PDF aqui pra analisar.', true); }
+});
 async function baixarPdf(id, onProg){
   const res = await fetch(`${API}/editions/viewPdf/${id}`);
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -547,7 +689,7 @@ $('today').addEventListener('click', async () => {
   if (busy) return;
   if (!dias) { status('Consultando as edições no site do DOE…'); await carregarDias(); }
   if (!dias || !dias.length) { status('Não consegui consultar o site do DOE agora. Baixe o PDF em diario.imprensaoficial.al.gov.br e solte aqui.', true); return; }
-  analisarDia(dias[0]);
+  abrirDia(dias[0]);
 });
 
 // fontes: [{name, id?, remoto?, load: async onProg => Uint8Array}] — do site do DOE ou de arquivo
@@ -571,8 +713,9 @@ async function analisar(fontes){
     status('Analisando os atos…');
     await new Promise(r => setTimeout(r, 20));
     const r = RadarAnalyzer.analyze(out);
-    saveHist(r);
+    await saveHist(r);
     render(r, false);
+    renderDias();
     status(`Pronto. ${r.editions.reduce((a, e) => a + e.paginas, 0)} páginas lidas.`);
   } catch (err) {
     console.error(err);
@@ -595,6 +738,7 @@ const drop = $('drop');
 ['dragleave', 'drop'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); if (t === 'drop' || e.target === document.documentElement) drop.classList.remove('over'); }));
 document.addEventListener('drop', e => { if (e.dataTransfer?.files?.length) handle(e.dataTransfer.files); });
 render(SAMPLE, true);
+carregarSalvos().then(() => { renderHistory(); renderDias(); });
 carregarDias();
 </script>
 

@@ -10,6 +10,8 @@
   const stripHeader = s => s
     .replace(/Edi[cç][aã]o Eletr[oô]nica Certificada Digitalmente conforme LEI N[°º] ?7\.397\/2012/g, ' ')
     .replace(/Di[aá]rio Oficial Estado de Alagoas/g, ' ')
+    .replace(/Poder Executivo(?: SUPLEMENTO)?(?= Macei)/g, ' ')
+    .replace(/Ano \d+ - N[uú]mero \d+(?:\s*\.)*/g, ' ')
     .replace(/Macei[oó] - (?:(?:segunda|ter[cç]a|quarta|quinta|sexta)-feira|s[aá]bado|domingo) \d{1,2} de [a-zç]+ de \d{4}( \d{1,3})?/gi, ' ')
     .replace(/\s+/g, ' ');
 
@@ -230,6 +232,6 @@
     return out;
   }
 
-  root.RadarAnalyzer = { analyze, classify, search, maskCpf };
+  root.RadarAnalyzer = { analyze, classify, search, maskCpf, isoDate };
   if (typeof module !== 'undefined') module.exports = root.RadarAnalyzer;
 })(typeof window !== 'undefined' ? window : globalThis);
