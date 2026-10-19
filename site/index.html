@@ -176,7 +176,9 @@ a{color:var(--accent)}
 .cal span.d{color:var(--muted);opacity:.45}
 .cal button.d:hover{border-color:var(--accent)}
 .cal .d.hoje{border-color:var(--line)}
-.cal .d[aria-current="date"]{background:var(--accent-soft);border-color:var(--accent)}
+.cal .d[aria-current="date"]{background:var(--accent);border-color:var(--accent);color:var(--sheet);font-weight:600}
+.cal .d[aria-current="date"] .dot{box-shadow:0 0 0 1.5px var(--sheet)}
+.cal .d[aria-current="date"] .dot:not(.alerta):not(.atencao):not(.rotina){border-color:var(--sheet)}
 .dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--muted);display:inline-block;flex:none}
 .dot.alerta{background:var(--alert);border-color:var(--alert)}
 .dot.atencao{background:var(--warn);border-color:var(--warn)}
@@ -186,17 +188,32 @@ a{color:var(--accent)}
 .legenda.cal-leg{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px;margin-top:-4px}
 .edlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
 .edlist li{display:flex;align-items:center;gap:4px;font-size:13px;min-width:0}
-.edlist .edbtn{flex:1;display:flex;align-items:center;gap:8px;text-align:left;padding:6px 8px;border-color:transparent;background:none;font-size:13px;min-width:0}
+.edlist .edbtn{flex:1;display:flex;align-items:center;gap:8px;text-align:left;padding:6px 8px;min-height:36px;border-color:transparent;background:none;font-size:13px;min-width:0}
 .edlist .edbtn:hover{border-color:var(--line)}
-.edlist .edtxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;line-height:1.35}
+.edlist .edbtn.cur{background:var(--accent-soft);border-color:var(--accent)}
+.edlist .edtxt{display:flex;align-items:center;min-width:0;flex:1;white-space:nowrap}
+.edlist .edtxt .t{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .edlist .edtxt b{font-weight:600}
-.edlist .l1{display:flex;align-items:center;min-width:0}
-.edlist .l1 .t{overflow:hidden;text-overflow:ellipsis;min-width:0}
-.edlist .l1 .supl{flex:none}
-.edlist .edtxt small{display:block;font:12px var(--f-mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis}
-.edlist .edtxt.nsalvo{opacity:.75}
-.edlist .n{margin-left:auto;font:12px var(--f-mono);color:var(--muted);white-space:nowrap}
-.edlist .icon{width:30px;height:30px;padding:0;flex:none;color:var(--muted)}
+.edlist .edtxt .wd{color:var(--muted)}
+.edlist .edtxt .supl{flex:none}
+.edlist .nsalvo{opacity:.7}
+.edlist .cnt{margin-left:auto;font:600 11px/1 var(--f-mono);padding:3px 7px;border-radius:999px;flex:none}
+.edlist .cnt.alerta{background:var(--alert-soft);color:var(--alert)}
+.edlist .cnt.atencao{background:var(--warn-soft);color:var(--warn)}
+.edlist .dl{flex:none;color:var(--muted);display:inline-flex}
+/* na lateral estreita (240px) o dia da semana não cabe; aparece no aria-label e nas larguras maiores */
+@media (min-width:1280px) and (max-width:1679px){ .edlist .edtxt .wd,.edlist .dl{display:none} }
+.edtitle{display:flex;align-items:center;gap:8px;font:600 15px var(--f-body);color:var(--ink);flex-wrap:wrap}
+.edtitle .q{color:var(--muted);font-weight:500}
+.today.quiet{background:var(--accent-soft);border-color:var(--line);color:var(--ink)}
+.today.quiet small{color:var(--muted)}
+.nowbar{position:fixed;top:0;left:0;right:0;z-index:20;pointer-events:none}
+.nowbar .in{display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:14px;min-width:0;pointer-events:auto;
+  background:color-mix(in srgb, var(--sheet) 94%, transparent);backdrop-filter:blur(6px);border:1px solid var(--line);border-top:0;border-radius:0 0 10px 10px;box-shadow:0 4px 12px rgb(0 0 0 / .08)}
+.nowbar .tt{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.nowbar .res{color:var(--muted);font:13px var(--f-mono);white-space:nowrap}
+.nowbar button{margin-left:auto;font-size:13px;padding:5px 10px;flex:none}
+@media (max-width:480px){ .nowbar .res{display:none} }
 .vigform{display:flex;gap:6px}
 .vigform input{font-size:14px;padding:8px 10px;min-width:0;flex:1}
 .vigform button{padding:8px 10px;font-size:13px;flex:none}
@@ -221,8 +238,12 @@ a{color:var(--accent)}
 .spark .eixo{font:10px var(--f-mono);fill:var(--muted)}
 .spark .pt{cursor:pointer;outline:none}
 .spark .pt .hit{fill:transparent;stroke:none}
-.spark .pt:hover .hit,.spark .pt:focus-visible .hit{fill:color-mix(in srgb, var(--calm) 16%, transparent)}
 .spark .pt:focus-visible .hit{stroke:var(--ink);stroke-width:1}
+.spark .guia{stroke:transparent;stroke-width:1}
+.spark .pt:hover .guia,.spark .pt:focus-visible .guia{stroke:var(--muted);stroke-dasharray:2 2}
+.spark .pt:hover rect:not(.hit),.spark .pt:focus-visible rect:not(.hit){filter:brightness(.82)}
+.spark .cap{font:12px/1.45 var(--f-mono);color:var(--muted);min-height:2.9em}
+.spark .cap b{color:var(--ink);font-weight:600}
 .spark .pt.cur rect:not(.hit){stroke:var(--ink);stroke-width:1.5}
 .spark .lab{flex-wrap:wrap}
 .spark .lab .val{margin-left:auto;text-align:right}
@@ -247,7 +268,7 @@ a{color:var(--accent)}
   :root, :root:not([data-theme="light"]), :root[data-theme="dark"]{
     --paper:#fff; --sheet:#fff; --ink:#13222b; --muted:#56666e; --line:#d6dfdc; --accent:#0d6b5f; --accent-soft:#e1efec;
     --alert:#b42318; --alert-soft:#fbe9e7; --warn:#a15c07; --warn-soft:#fbf0dc; --calm:#4b5d66; --calm-soft:#e9eef0; --mark:#fff0b3; color-scheme:light }
-  .inputs,.progress,.actions,#filtros,#busca,.side,#vigiados,.shot,details summary{display:none!important}
+  .inputs,.progress,.actions,#filtros,#busca,.side,#vigiados,.nowbar,.shot,details summary{display:none!important}
   .shell{display:block!important}
   .wrap{padding:0;gap:18px}
   .act,.verdict,.panel{break-inside:avoid}
@@ -256,6 +277,7 @@ a{color:var(--accent)}
 
 </head>
 <body>
+<div class="nowbar" id="nowbar" hidden><div class="in" id="nowbar-in"></div></div>
 <div class="shell" id="shell">
 <aside class="side" id="nav" aria-label="Navegação pelas edições">
   <div class="panel">
@@ -350,7 +372,7 @@ a{color:var(--accent)}
     <form class="vigform" id="vig-form"><input class="search" id="vig-termo" placeholder="Nome ou matrícula" autocomplete="off" aria-label="Termo pra vigiar"><button type="submit">Adicionar</button></form>
     <div class="small" id="vig-msg" role="status"></div>
     <ul class="termos" id="vig-lista"></ul>
-    <span class="muted small">Cada edição aberta é varrida inteira por esses termos. Fica salvo só neste navegador. <button type="button" class="linkbtn" id="vig-limpar">Limpar lista</button></span>
+    <span class="muted small">Toda edição aberta é varrida inteira e o que bater aparece no topo do relatório. Fica salvo só neste navegador. <button type="button" class="linkbtn" id="vig-limpar">Limpar lista</button></span>
   </div>
   <div class="panel">
     <h3>Tendência</h3>
@@ -415,11 +437,13 @@ function render(r, isSample, salvo){
   const pages = e.reduce((a, x) => a + (x.paginas || 0), 0);
   const iso = e.map(x => x.iso).filter(Boolean).sort().pop();
   const quando = salvo && new Date(salvo.em);
+  // Qual edição está na tela, em destaque no topo do card: "DOE nº 2906 + suplemento · segunda, 19/10/2026"
+  const titulo = edTitulo(e), qd = iso ? `${diaSemana(iso)}, ${ddmm(iso)}/${iso.slice(0, 4)}` : dates;
   v.innerHTML = `${isSample ? `<span class="sample">Exemplo com o DOE de 13/10/2026. Toque em "Analisar o DOE de hoje" ou solte um PDF.</span>` : ''}
     ${salvo && salvo.aviso ? `<span class="sample">${esc(salvo.aviso)}</span>` : ''}
-    ${quando && !salvo.aviso ? `<span class="sample saved">Relatório guardado em ${quando.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}, analisado neste navegador.</span>` : ''}
+    <div class="edtitle"><span class="dot ${nivelDe(c)}" aria-hidden="true"></span><span>${esc(titulo)}</span>${qd ? `<span class="q">· ${esc(qd)}</span>` : ''}</div>
     <div class="big">${esc(bigText(c))}</div>
-    <div class="vmeta"><span>${esc(edLabel(e))}</span>${dates ? `<span>${esc(dates)}</span>` : ''}<span>${pages} páginas lidas</span><span>${c.alerta + c.atencao + c.rotina} atos da UNCISAL</span></div>
+    <div class="vmeta"><span>${pages} páginas lidas</span><span>${c.alerta + c.atencao + c.rotina} atos da UNCISAL</span>${quando ? `<span>guardado neste navegador em ${quando.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>` : ''}</div>
     <div class="actions"><button id="copy" type="button">Copiar resumo</button><button id="img" type="button">Baixar imagem</button><button id="pdf" type="button">Salvar PDF</button>${salvo && iso ? `<button id="again" type="button">Analisar de novo</button>` : ''}${salvo && salvo.dia ? `<button id="novo" type="button" class="primary">Analisar o DOE nº ${esc(salvo.dia.eds[0].number)}</button>` : ''}</div>`;
   if ($('again')) $('again').onclick = () => reanalisar(iso);
   if ($('novo')) $('novo').onclick = () => abrirDia(salvo.dia);
@@ -451,8 +475,42 @@ function render(r, isSample, salvo){
   renderActs();
   runSearch();
   renderVigiados();
+  // o calendário vai pro mês da edição aberta
+  if (!isSample && iso) calYM = [+iso.slice(0, 4), +iso.slice(5, 7)];
   renderHistory();
+  renderDias();
+  pintarNowbar();
 }
+// "DOE nº 2906 + suplemento"; se forem edições de números diferentes, a lista completa
+function edTitulo(e){
+  const nums = [...new Set(e.map(x => x.numero))];
+  return nums.length === 1 && nums[0] ? `DOE nº ${nums[0]}${e.some(x => x.suplemento) ? ' + suplemento' : ''}` : edLabel(e);
+}
+
+// Barra fina fixa no topo quando o card do veredito sai da tela: qual edição está sendo lida + "Trocar edição"
+function pintarNowbar(){
+  if (!current) return;
+  const e = current.editions, c = current.counts, iso = e.map(x => x.iso).filter(Boolean).sort().pop();
+  $('nowbar-in').innerHTML = `<span class="dot ${nivelDe(c)}" aria-hidden="true"></span>
+    <span class="tt">${esc(edTitulo(e))}${iso ? ` · ${SEM3[new Date(iso + 'T12:00:00').getDay()]} ${ddmm(iso)}` : ''}${isSampleView ? ' (exemplo)' : ''}</span>
+    <span class="res">${esc(resumoNivel(c))}</span>
+    <button type="button" id="trocar">Trocar edição</button>`;
+  $('trocar').onclick = () => {
+    scrollTo({ top: 0, behavior: 'smooth' });
+    const alvo = mqLarga.matches ? ($('cal').querySelector('[aria-current="date"]') || $('cal').querySelector('button')) : $('today');
+    if (alvo) setTimeout(() => alvo.focus({ preventScroll: true }), 350);
+  };
+  alinharNowbar();
+}
+function alinharNowbar(){
+  const r = $('verdict').getBoundingClientRect(), i = $('nowbar-in');
+  i.style.marginLeft = r.left + 'px'; i.style.width = r.width + 'px';
+}
+new IntersectionObserver(([en]) => {
+  $('nowbar').hidden = !current || en.isIntersecting || en.boundingClientRect.top > 0;
+  if (!$('nowbar').hidden) alinharNowbar();
+}).observe($('verdict'));
+addEventListener('resize', () => { if (!$('nowbar').hidden) alinharNowbar(); });
 
 // Filtro por tipo: rótulos dos alertas/atenção e grupos da rotina, com contagem
 function renderFilters(){
@@ -639,17 +697,25 @@ let histTodas = false;
 // Tudo que depende do histórico: lista de edições, calendário e tendência
 function renderHistory(){
   const h = edicoesPorDia(), visiveis = histTodas ? h : h.slice(0, HIST_VISIVEIS);
+  const aberta = current && !isSampleView ? edLabel(current.editions) : '';
+  // Uma linha por edição: "sex 16/10 · 2905 [supl.]" + selo com a contagem que importa (alertas, senão atenção).
+  // Sem relatório guardado: linha apagada + ícone de download; o clique baixa e analisa de novo.
+  const linha = (x, i) => {
+    const salvo = salvos.has(x.key), num = (x.key.match(/nº (\d+)/) || [, curto(x.key)])[1], supl = /suplemento/.test(x.key);
+    const txt = `${x.iso ? ddmm(x.iso) + ', ' : ''}DOE nº ${num}${supl ? ' com suplemento' : ''}: ${x.alerta} ${x.alerta === 1 ? 'alerta' : 'alertas'}, ${x.atencao} ${x.atencao === 1 ? 'ponto' : 'pontos'} de atenção, ${x.rotina} de rotina. ${x.key === aberta ? 'Aberta agora. ' : ''}${salvo ? 'Abrir relatório guardado' : 'Relatório não guardado: baixar e analisar de novo'}`;
+    const cnt = x.alerta ? `<span class="cnt alerta">${x.alerta}</span>` : x.atencao ? `<span class="cnt atencao">${x.atencao}</span>` : '';
+    return `<li><button type="button" class="edbtn${x.key === aberta ? ' cur' : ''}"${x.key === aberta ? ' aria-current="true"' : ''} data-i="${i}" aria-label="${esc(txt)}" title="${esc(txt)}">
+        <span class="dot ${nivelDe(x)}" aria-hidden="true"></span>
+        <span class="edtxt${salvo ? '' : ' nsalvo'}" aria-hidden="true"><span class="t">${x.iso ? `<span class="wd">${SEM3[new Date(x.iso + 'T12:00:00').getDay()]} </span><b>${ddmm(x.iso)}</b> · ` : ''}${esc(num)}</span>${supl ? SUPL : ''}</span>
+        ${cnt}${salvo ? '' : `<span class="dl" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg></span>`}</button></li>`;
+  };
   $('limpar').hidden = !h.length;
   $('hist').innerHTML = h.length
-    ? visiveis.map((x, i) => `<li><button type="button" class="edbtn" data-i="${i}" title="${esc(x.key)} · ${salvos.has(x.key) ? 'abrir o relatório guardado' : 'relatório não guardado: analisar de novo'}">
-          <span class="dot ${nivelDe(x)}" aria-hidden="true"></span><span class="edtxt${salvos.has(x.key) ? '' : ' nsalvo'}"><span class="l1"><span class="t"><b>${x.iso ? ddmm(x.iso) : '—'}</b> · <span class="sr">DOE nº </span>${esc((x.key.match(/nº (\d+)/) || [, curto(x.key)])[1])}</span>${/suplemento/.test(x.key) ? SUPL : ''}</span>
-          <small aria-label="${x.alerta} alertas, ${x.atencao} atenção, ${x.rotina} rotina${salvos.has(x.key) ? '' : '; relatório não guardado'}">${resumoNivel(x)}${salvos.has(x.key) ? '' : ' · não guardado'}</small></span></button>
-        ${x.iso ? `<button type="button" class="icon" data-again="${esc(x.iso)}" aria-label="Analisar de novo ${esc(curto(x.key))}" title="Analisar de novo com as regras atuais">↻</button>` : ''}</li>`).join('')
+    ? visiveis.map(linha).join('')
       + (h.length > HIST_VISIVEIS ? `<li><button type="button" class="mais" id="hist-mais" aria-expanded="${histTodas}">${histTodas ? 'Mostrar só as 5 mais recentes' : `Ver todas (${h.length})`}</button></li>` : '')
     : `<li class="muted small">As edições que você analisar aparecem aqui, pra abrir de novo.</li>`;
   $('hist').querySelectorAll('[data-i]').forEach(b => b.onclick = () => abrirDoHistorico(h[+b.dataset.i]));
   if ($('hist-mais')) $('hist-mais').onclick = () => { histTodas = !histTodas; renderHistory(); $('hist-mais').focus(); };
-  $('hist').querySelectorAll('[data-again]').forEach(b => b.onclick = () => reanalisar(b.dataset.again));
   renderTrend();
   renderCal();
 }
@@ -674,33 +740,37 @@ function renderTrend(){
   const eixo = pts.map((p, i) => comData(i) ? `<text class="eixo" x="${f(i === 0 ? P : i === n - 1 ? W - P : cx(i))}" y="${H - 2}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${ddmm(p.iso)}</text>` : '').join('');
   const base = `<line class="base" x1="${P}" x2="${W - P}" y1="${B}" y2="${B}"/>`;
   // cada edição é um alvo clicável/focável da altura do gráfico
-  const alvo = (p, i, txt, corpo) => `<g class="pt${p.key === curKey ? ' cur' : ''}" tabindex="0" role="button" data-i="${i}" data-txt="${esc(txt)}" aria-label="${esc(txt)}. Abrir edição"><rect class="hit" x="${f(P + slot * i)}" y="0" width="${f(slot)}" height="${B}" rx="2"/>${corpo}<title>${esc(txt)}</title></g>`;
+  // hover/foco: linha-guia tracejada + texto na legenda fixa embaixo do gráfico (nada muda de tamanho)
+  const alvo = (p, i, txt, corpo) => `<g class="pt${p.key === curKey ? ' cur' : ''}" tabindex="0" role="button" data-i="${i}" data-txt="${esc(txt)}" aria-label="${esc(txt)}. Abrir edição"><rect class="hit" x="${f(P + slot * i)}" y="0" width="${f(slot)}" height="${B}" rx="2"/><line class="guia" x1="${f(cx(i))}" x2="${f(cx(i))}" y1="0" y2="${B}"/>${corpo}<title>${esc(txt)}</title></g>`;
+  const quem = p => `${ddmm(p.iso)} · ${(p.key.match(/nº \d+/) || [curto(p.key)])[0]}${/suplemento/.test(p.key) ? ' supl.' : ''}`;
 
   const maxB = Math.max(1, ...pts.map(p => (+p.alerta || 0) + (+p.atencao || 0))), hB = v => v / maxB * (B - 4), bw = Math.min(14, slot * 0.6);
   const barras = pts.map((p, i) => {
     const a = +p.alerta || 0, t = +p.atencao || 0, x0 = f(cx(i) - bw / 2);
-    return alvo(p, i, `${ddmm(p.iso)} · ${curto(p.key)}: ${a} ${a === 1 ? 'alerta' : 'alertas'}, ${t} atenção`,
+    return alvo(p, i, `${quem(p)}: ${a} ${a === 1 ? 'alerta' : 'alertas'}, ${t} atenção`,
       (a ? `<rect class="bar-alerta" x="${x0}" y="${f(B - hB(a))}" width="${f(bw)}" height="${f(hB(a))}"/>` : '')
       + (t ? `<rect class="bar-atencao" x="${x0}" y="${f(B - hB(a) - hB(t))}" width="${f(bw)}" height="${f(hB(t))}"/>` : ''));
   }).join('');
 
   const ex = pts.map(p => +p.exon || 0), maxE = Math.max(1, ...ex), ey = v => B - v / maxE * (B - 6);
-  const linha = pts.map((p, i) => alvo(p, i, `${ddmm(p.iso)} · ${curto(p.key)}: ${ex[i]} exonerações no Estado`, '')).join('')
+  const linha = pts.map((p, i) => alvo(p, i, `${quem(p)}: ${ex[i]} ${ex[i] === 1 ? 'exoneração' : 'exonerações'}`, '')).join('')
     + `<polyline class="s-exon" points="${ex.map((v, i) => `${f(cx(i))},${f(ey(v))}`).join(' ')}"/>`
     + ex.map((v, i) => `<circle class="s-exon" cx="${f(cx(i))}" cy="${f(ey(v))}" r="${pts[i].key === curKey ? 4.5 : 3}" pointer-events="none"/>`).join('');
 
   const ult = pts[n - 1];
-  const graf = (rotulo, padrao, corpo, leg) => `<div class="spark"><div class="lab"><span>${rotulo}</span><span class="val" data-padrao="${esc(padrao)}">${padrao}</span></div>${leg || ''}
-      <svg class="tall" viewBox="0 0 ${W} ${H}" role="group" aria-label="${esc(rotulo)} nas últimas ${n} edições analisadas">${corpo}${base}${eixo}</svg></div>`;
-  $('trend').innerHTML = `<div style="display:flex;flex-direction:column;gap:14px">`
-    + graf('Alertas e atenção', `último <b>${+ult.alerta || 0}</b> e <b>${+ult.atencao || 0}</b>`, barras,
+  const graf = (rotulo, padrao, corpo, leg) => `<div class="spark"><div class="lab"><span>${rotulo}</span>${leg || ''}</div>
+      <svg class="tall" viewBox="0 0 ${W} ${H}" role="group" aria-label="${esc(rotulo)} nas últimas ${n} edições analisadas">${corpo}${base}${eixo}</svg>
+      <div class="cap" data-padrao="${esc(padrao)}">${padrao}</div></div>`;
+  const ultTxt = `último (${ddmm(ult.iso)})`;
+  $('trend').innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">`
+    + graf('Alertas e atenção', `${ultTxt}: <b>${+ult.alerta || 0}</b> ${+ult.alerta === 1 ? 'alerta' : 'alertas'}, <b>${+ult.atencao || 0}</b> atenção`, barras,
       `<div class="leg"><span><i style="background:var(--alert)"></i>alerta</span><span><i style="background:var(--warn)"></i>atenção</span></div>`)
-    + graf('Exonerações no Estado', `último <b>${ex[n - 1]}</b> · máx. ${maxE}`, linha)
+    + graf('Exonerações no Estado', `${ultTxt}: <b>${ex[n - 1]}</b> · máx. ${maxE}`, linha)
     + `</div><span class="muted small">Toque numa barra ou ponto pra abrir a edição.</span>`;
   $('trend').querySelectorAll('g.pt').forEach(g => {
     const go = () => abrirDoHistorico(pts[+g.dataset.i]);
-    // valor da edição no rótulo do gráfico enquanto o mouse ou o foco estiver nela
-    const val = g.closest('.spark').querySelector('.val');
+    // valor da edição na legenda fixa embaixo do gráfico enquanto o mouse ou o foco estiver nela
+    const val = g.closest('.spark').querySelector('.cap');
     const mostra = () => { val.textContent = g.dataset.txt; };
     const volta = () => { val.innerHTML = val.dataset.padrao; };
     g.addEventListener('mouseenter', mostra); g.addEventListener('focus', mostra);
@@ -752,7 +822,7 @@ function renderVigLista(){
   $('vig-lista').innerHTML = l.length
     ? l.map((t, i) => `<li>${esc(t)}<button type="button" data-i="${i}" aria-label="Remover ${esc(t)} da lista de vigia" title="Remover">×</button></li>`).join('')
     : `<li class="vazia"><div class="sugs"><span class="muted small">Sugestões:</span>${['PROGESP', 'SUPLAF', 'SUMOF'].map(t => `<button type="button" data-sug="${t}" aria-label="Vigiar ${t}">+ ${t}</button>`).join('')}</div>
-       <span class="muted small">Ou seu nome, sua matrícula. Toda edição aberta mostra no topo onde esses termos aparecem.</span></li>`;
+       <span class="muted small">Ou seu nome ou matrícula.</span></li>`;
   $('vig-lista').querySelectorAll('[data-sug]').forEach(b => b.onclick = () => { addTermo(b.dataset.sug); $('vig-termo').focus(); });
   $('vig-lista').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => { const v = loadVig(); vigMsg(`“${v[+b.dataset.i]}” saiu da lista.`); v.splice(+b.dataset.i, 1); saveVig(v); renderVigLista(); renderVigiados(); });
   $('vig-limpar').hidden = !l.length;
@@ -927,14 +997,20 @@ async function acharDia(iso){
   return l.find(x => x.d === iso) || null;
 }
 const ddmm = d => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+const SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'], SEM3 = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const diaSemana = iso => SEMANA[new Date(iso + 'T12:00:00').getDay()];
 const diaDesc = x => `nº ${x.eds[0].number} · ${ddmm(x.d)}${x.eds.some(e => e.suplement) ? ' + suplemento' : ''}`;
 // Mesma chave que edLabel() gera depois de ler os PDFs desse dia
 const diaKey = x => x.eds.map(e => `DOE nº ${e.number}${e.suplement ? ' (suplemento)' : ''}`).join(' + ');
 function hojeISO(){ const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; }
 function renderDias(){
   if (!dias || !dias.length) return;
-  $('today').firstChild.textContent = dias[0].d === hojeISO() ? 'Analisar o DOE de hoje' : 'Analisar o último DOE';
-  $('today-sub').textContent = diaDesc(dias[0]) + (salvos.has(diaKey(dias[0])) ? ' · já analisado' : '');
+  // O botão principal diz onde você está: no DOE de hoje (discreto), voltar pra ele, ou analisar
+  const doDia = dias[0].d === hojeISO() ? 'DOE de hoje' : 'último DOE', k0 = diaKey(dias[0]);
+  const vendo = !!current && !isSampleView && edLabel(current.editions) === k0;
+  $('today').classList.toggle('quiet', vendo);
+  $('today').firstChild.textContent = vendo ? `Você está no ${doDia}` : salvos.has(k0) ? `Voltar pro ${doDia}` : `Analisar o ${doDia}`;
+  $('today-sub').textContent = diaDesc(dias[0]);
   const outros = dias.slice(1, mostrar);
   $('recent').innerHTML = outros.length
     ? 'Outros dias:' + outros.map((x, i) => `<button type="button" data-i="${i + 1}" class="${salvos.has(diaKey(x)) ? 'seen' : ''}" title="${esc(diaDesc(x))}${salvos.has(diaKey(x)) ? ' · já analisado' : ''}">${ddmm(x.d)}</button>`).join('')
@@ -1004,6 +1080,7 @@ $('today').addEventListener('click', async () => {
   if (busy) return;
   if (!dias) { status('Consultando as edições no site do DOE…'); await carregarDias(); }
   if (!dias || !dias.length) { status('Não consegui consultar o site do DOE agora. Baixe o PDF em diario.imprensaoficial.al.gov.br e solte aqui.', true); return; }
+  if ($('today').classList.contains('quiet')) { $('verdict').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   abrirDia(dias[0]);
 });
 
