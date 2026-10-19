@@ -1,0 +1,4 @@
+node_modules/
+.vercel/
+# PDFs originais do DOE têm CPFs completos; as fixtures em test/ já vão com CPF zerado.
+amostras/

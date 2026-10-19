@@ -1,0 +1,4 @@
+# Só a pasta site/ vai pro ar. PDFs e fixtures têm nomes de servidores e não sobem nem pro build.
+amostras/
+test/
+node_modules/

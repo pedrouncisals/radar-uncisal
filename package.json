@@ -1,0 +1,13 @@
+{
+  "name": "radar-uncisal",
+  "private": true,
+  "description": "Radar UNCISAL: lê o PDF do DOE/AL no navegador e mostra o que saiu sobre a UNCISAL",
+  "scripts": {
+    "test": "node test/run.js",
+    "report": "node test/run.js --show",
+    "fixtures": "node test/extract.js amostras"
+  },
+  "devDependencies": {
+    "pdfjs-dist": "3.11.174"
+  }
+}
