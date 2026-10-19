@@ -199,7 +199,7 @@ a{color:var(--accent)}
 .vigform button{padding:8px 10px;font-size:13px;flex:none}
 .termos{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
 .termos li{display:flex;align-items:center;gap:2px;background:var(--calm-soft);border-radius:999px;padding:2px 2px 2px 10px;font-size:13px;max-width:100%;overflow-wrap:anywhere}
-.termos button{border:0;background:none;width:28px;height:28px;padding:0;border-radius:50%;color:var(--muted);flex:none}
+.termos button[data-i]{border:0;background:none;width:28px;height:28px;padding:0;border-radius:50%;color:var(--muted);flex:none}
 .msg-err{color:var(--alert)}
 #vigiados{background:var(--sheet);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:12px;padding:16px 20px;gap:12px}
 #vigiados .vterm{display:flex;flex-direction:column;gap:6px}
@@ -220,7 +220,9 @@ a{color:var(--accent)}
 .spark .pt .hit{fill:transparent;stroke:none}
 .spark .pt:hover .hit,.spark .pt:focus-visible .hit{fill:color-mix(in srgb, var(--calm) 16%, transparent)}
 .spark .pt:focus-visible .hit{stroke:var(--ink);stroke-width:1}
-.spark .pt.cur .hit{fill:var(--accent-soft)}
+.spark .pt.cur rect:not(.hit){stroke:var(--ink);stroke-width:1.5}
+.spark .lab{flex-wrap:wrap}
+.spark .lab .val{margin-left:auto;text-align:right}
 .spark .leg{display:flex;gap:10px;font-size:11px;color:var(--muted)}
 .spark .leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .supl{display:inline-flex;vertical-align:-2px;color:var(--muted);margin-left:2px}
@@ -341,7 +343,7 @@ a{color:var(--accent)}
 <aside class="side" id="vig" aria-label="Vigilância">
   <div class="panel">
     <h3>Lista de vigia</h3>
-    <form class="vigform" id="vig-form"><input class="search" id="vig-termo" placeholder="Nome, matrícula, setor" autocomplete="off" aria-label="Termo pra vigiar"><button type="submit">Adicionar</button></form>
+    <form class="vigform" id="vig-form"><input class="search" id="vig-termo" placeholder="Nome ou matrícula" autocomplete="off" aria-label="Termo pra vigiar"><button type="submit">Adicionar</button></form>
     <div class="small" id="vig-msg" role="status"></div>
     <ul class="termos" id="vig-lista"></ul>
     <span class="muted small">Cada edição aberta é varrida inteira por esses termos. Fica salvo só neste navegador. <button type="button" class="linkbtn" id="vig-limpar">Limpar lista</button></span>
@@ -748,7 +750,7 @@ function renderVigLista(){
     : `<li class="vazia"><div class="sugs"><span class="muted small">Sugestões:</span>${['PROGESP', 'SUPLAF', 'SUMOF'].map(t => `<button type="button" data-sug="${t}" aria-label="Vigiar ${t}">+ ${t}</button>`).join('')}</div>
        <span class="muted small">Ou seu nome, sua matrícula. Toda edição aberta mostra no topo onde esses termos aparecem.</span></li>`;
   $('vig-lista').querySelectorAll('[data-sug]').forEach(b => b.onclick = () => { addTermo(b.dataset.sug); $('vig-termo').focus(); });
-  $('vig-lista').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => { const v = loadVig(); v.splice(+b.dataset.i, 1); saveVig(v); renderVigLista(); renderVigiados(); });
+  $('vig-lista').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => { const v = loadVig(); vigMsg(`“${v[+b.dataset.i]}” saiu da lista.`); v.splice(+b.dataset.i, 1); saveVig(v); renderVigLista(); renderVigiados(); });
   $('vig-limpar').hidden = !l.length;
 }
 function addTermo(bruto){
