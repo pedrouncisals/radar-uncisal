@@ -164,6 +164,9 @@ a{color:var(--accent)}
   .side{align-items:stretch} .side > .panel{width:100%}
   .hide-wide{display:none!important}
 }
+/* Com espaço sobrando, as laterais crescem sem tirar nada dos 960px do centro */
+@media (min-width:1680px){ #nav{width:280px} #vig{width:320px} }
+@media (min-width:1860px){ #nav{width:300px} #vig{width:340px} }
 .calhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .calhead span{font-weight:600;font-size:14px}
 .calhead button{width:32px;height:32px;padding:0;font-size:18px;line-height:1}
@@ -184,7 +187,10 @@ a{color:var(--accent)}
 .edlist li{display:flex;align-items:center;gap:4px;font-size:13px;min-width:0}
 .edlist .edbtn{flex:1;display:flex;align-items:center;gap:8px;text-align:left;padding:6px 8px;border-color:transparent;background:none;font-size:13px;min-width:0}
 .edlist .edbtn:hover{border-color:var(--line)}
-.edlist .edtxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.edlist .edtxt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;line-height:1.35}
+.edlist .edtxt b{font-weight:600}
+.edlist .edtxt small{display:block;font:12px var(--f-mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.edlist .edtxt.nsalvo{opacity:.75}
 .edlist .n{margin-left:auto;font:12px var(--f-mono);color:var(--muted);white-space:nowrap}
 .edlist .icon{width:30px;height:30px;padding:0;flex:none;color:var(--muted)}
 .vigform{display:flex;gap:6px}
@@ -237,7 +243,7 @@ a{color:var(--accent)}
     <h3>Calendário do DOE</h3>
     <div class="calhead"><button type="button" id="cal-prev" aria-label="Mês anterior">‹</button><span id="cal-mes" aria-live="polite"></span><button type="button" id="cal-next" aria-label="Próximo mês">›</button></div>
     <div class="cal" id="cal"></div>
-    <span class="muted small"><span class="dot rotina"></span> analisado, na cor do pior nível · <span class="dot"></span> ainda não analisado</span>
+    <ul class="legenda muted small"><li><span class="dot rotina"></span><span>analisado, na cor do pior nível</span></li><li><span class="dot"></span><span>tem edição, ainda não analisado</span></li></ul>
   </div>
   <div class="panel">
     <h3>Edições analisadas</h3>
@@ -316,7 +322,7 @@ a{color:var(--accent)}
 <aside class="side" id="vig" aria-label="Vigilância">
   <div class="panel">
     <h3>Lista de vigia</h3>
-    <form class="vigform" id="vig-form"><input class="search" id="vig-termo" placeholder="Nome, matrícula ou setor" autocomplete="off" aria-label="Termo pra vigiar"><button type="submit">Adicionar</button></form>
+    <form class="vigform" id="vig-form"><input class="search" id="vig-termo" placeholder="Nome, matrícula, setor" autocomplete="off" aria-label="Termo pra vigiar"><button type="submit">Adicionar</button></form>
     <div class="small" id="vig-msg" role="status"></div>
     <ul class="termos" id="vig-lista"></ul>
     <span class="muted small">Cada edição aberta é varrida inteira por esses termos. Fica salvo só neste navegador. <button type="button" class="linkbtn" id="vig-limpar">Limpar lista</button></span>
@@ -588,14 +594,27 @@ async function abrirDoHistorico(x){
   if (x.iso) reanalisar(x.iso);
   else status('Esse relatório não está guardado e não tem data. Solte o PDF de novo pra analisar.', true);
 }
+// Uma linha por dia, do mais recente pro mais antigo. Se o mesmo dia foi analisado mais de uma vez
+// (com e sem suplemento), fica a análise com relatório guardado e, entre essas, a com mais edições.
+function edicoesPorDia(){
+  const porIso = new Map(), semData = [];
+  const peso = x => (salvos.has(x.key) ? 10 : 0) + x.key.split(' + ').length;
+  loadHist().forEach(x => {
+    if (!x.iso) { semData.push(x); return; }
+    const a = porIso.get(x.iso);
+    if (!a || peso(x) > peso(a)) porIso.set(x.iso, x);
+  });
+  return [...[...porIso.values()].sort((a, b) => b.iso.localeCompare(a.iso)), ...semData];
+}
+const resumoNivel = x => x.alerta ? `${x.alerta} ${x.alerta > 1 ? 'alertas' : 'alerta'}` : x.atencao ? `${x.atencao} atenção` : 'rotina';
 // Tudo que depende do histórico: lista de edições, calendário e tendência
 function renderHistory(){
-  const h = loadHist();
+  const h = edicoesPorDia();
   $('limpar').hidden = !h.length;
   $('hist').innerHTML = h.length
-    ? h.map((x, i) => `<li><button type="button" class="edbtn" data-i="${i}" title="${salvos.has(x.key) ? 'Abrir o relatório guardado' : 'Relatório não guardado: analisar de novo'}">
-          <span class="dot ${nivelDe(x)}" aria-hidden="true"></span><span class="edtxt">${esc(curto(x.key))}${x.iso ? ` · ${ddmm(x.iso)}` : ''}${salvos.has(x.key) ? '' : ' <span class="muted">(não guardado)</span>'}</span>
-          <span class="n" aria-label="${x.alerta} alertas, ${x.atencao} atenção, ${x.rotina} rotina">${x.alerta}·${x.atencao}·${x.rotina}</span></button>
+    ? h.map((x, i) => `<li><button type="button" class="edbtn" data-i="${i}" title="${esc(x.key)} · ${salvos.has(x.key) ? 'abrir o relatório guardado' : 'relatório não guardado: analisar de novo'}">
+          <span class="dot ${nivelDe(x)}" aria-hidden="true"></span><span class="edtxt${salvos.has(x.key) ? '' : ' nsalvo'}"><b>${x.iso ? ddmm(x.iso) : '—'}</b> · ${esc((x.key.match(/nº \d+/) || [curto(x.key)])[0])}${/suplemento/.test(x.key) ? ' <span class="muted">+S</span>' : ''}
+          <small aria-label="${x.alerta} alertas, ${x.atencao} atenção, ${x.rotina} rotina${salvos.has(x.key) ? '' : '; relatório não guardado'}">${resumoNivel(x)}${salvos.has(x.key) ? '' : ' · não guardado'}</small></span></button>
         ${x.iso ? `<button type="button" class="icon" data-again="${esc(x.iso)}" aria-label="Analisar de novo ${esc(curto(x.key))}" title="Analisar de novo com as regras atuais">↻</button>` : ''}</li>`).join('')
     : `<li class="muted small">As edições que você analisar aparecem aqui, pra abrir de novo.</li>`;
   $('hist').querySelectorAll('[data-i]').forEach(b => b.onclick = () => abrirDoHistorico(h[+b.dataset.i]));
@@ -614,7 +633,7 @@ $('limpar').addEventListener('click', async () => {
 
 // Tendência: 3 mini-gráficos (cada um com sua escala) das últimas 20 edições analisadas, por data
 function renderTrend(){
-  const pts = loadHist().filter(x => x.iso).sort((a, b) => a.iso.localeCompare(b.iso)).slice(-20);
+  const pts = edicoesPorDia().filter(x => x.iso).reverse().slice(-20);
   if (pts.length < 2) { $('trend').innerHTML = `<p class="muted small" style="margin:0">Analise pelo menos duas edições pra ver a tendência.</p>`; return; }
   const curKey = current && !isSampleView ? edLabel(current.editions) : '';
   const W = 252, H = 48, P = 6, x = i => P + i * (W - 2 * P) / (pts.length - 1);
@@ -622,7 +641,7 @@ function renderTrend(){
     const vals = pts.map(p => +p[campo] || 0), max = Math.max(1, ...vals), y = v => H - P - v / max * (H - 2 * P);
     const circles = pts.map((p, i) => `<circle class="pt ${cls}${p.key === curKey ? ' cur' : ''}" cx="${x(i).toFixed(1)}" cy="${y(vals[i]).toFixed(1)}" r="${p.key === curKey ? 5 : 3.5}" tabindex="0" role="button" data-i="${i}"
         aria-label="${esc(`${ddmm(p.iso)}, ${curto(p.key)}: ${vals[i]} ${rotulo.toLowerCase()}. Abrir edição`)}"><title>${esc(`${ddmm(p.iso)} · ${curto(p.key)}: ${vals[i]}`)}</title></circle>`).join('');
-    return `<div class="spark"><div class="lab"><span>${rotulo}</span><span>último <b>${vals[vals.length - 1]}</b> · máx. ${max}</span></div>
+    return `<div class="spark"><div class="lab"><span>${rotulo}</span><span class="val" data-padrao="${esc(`último <b>${vals[vals.length - 1]}</b> · máx. ${max}`)}">último <b>${vals[vals.length - 1]}</b> · máx. ${max}</span></div>
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="group" aria-label="${esc(rotulo)} nas últimas ${pts.length} edições">
         <line class="base" x1="${P}" x2="${W - P}" y1="${H - P}" y2="${H - P}"/>
         <polyline class="${cls}" points="${pts.map((p, i) => `${x(i).toFixed(1)},${y(vals[i]).toFixed(1)}`).join(' ')}"/>${circles}</svg></div>`;
@@ -631,6 +650,12 @@ function renderTrend(){
     <span class="muted small">${ddmm(pts[0].iso)} a ${ddmm(pts[pts.length - 1].iso)} · toque num ponto pra abrir a edição</span>`;
   $('trend').querySelectorAll('circle.pt').forEach(c => {
     const go = () => abrirDoHistorico(pts[+c.dataset.i]);
+    // valor do ponto no rótulo do gráfico enquanto o mouse ou o foco estiver nele
+    const val = c.closest('.spark').querySelector('.val');
+    const mostra = () => { const p = pts[+c.dataset.i]; val.innerHTML = `${ddmm(p.iso)} · ${esc(curto(p.key))}: <b>${c.getAttribute('aria-label').match(/: (\d+)/)[1]}</b>`; };
+    const volta = () => { val.innerHTML = val.dataset.padrao; };
+    c.addEventListener('mouseenter', mostra); c.addEventListener('focus', mostra);
+    c.addEventListener('mouseleave', volta); c.addEventListener('blur', volta);
     c.addEventListener('click', go);
     c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   });
@@ -675,7 +700,9 @@ function saveVig(l){ try { localStorage.setItem(VKEY, JSON.stringify(l)); } catc
 function vigMsg(t, err){ $('vig-msg').textContent = t; $('vig-msg').className = 'small' + (err ? ' msg-err' : ' muted'); }
 function renderVigLista(){
   const l = loadVig();
-  $('vig-lista').innerHTML = l.map((t, i) => `<li>${esc(t)}<button type="button" data-i="${i}" aria-label="Remover ${esc(t)} da lista de vigia" title="Remover">×</button></li>`).join('');
+  $('vig-lista').innerHTML = l.length
+    ? l.map((t, i) => `<li>${esc(t)}<button type="button" data-i="${i}" aria-label="Remover ${esc(t)} da lista de vigia" title="Remover">×</button></li>`).join('')
+    : `<span class="muted small">Ex.: seu nome, sua matrícula, PROGESP. Toda edição aberta mostra no topo onde esses termos aparecem.</span>`;
   $('vig-lista').querySelectorAll('button').forEach(b => b.onclick = () => { const v = loadVig(); v.splice(+b.dataset.i, 1); saveVig(v); renderVigLista(); renderVigiados(); });
   $('vig-limpar').hidden = !l.length;
 }
