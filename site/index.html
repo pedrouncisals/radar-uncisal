@@ -183,6 +183,7 @@ a{color:var(--accent)}
 .dot.rotina{background:var(--accent);border-color:var(--accent)}
 .legenda{display:flex;flex-direction:column;gap:6px;font-size:13px;margin:0;padding:0;list-style:none}
 .legenda li{display:flex;gap:8px;align-items:baseline}
+.legenda.cal-leg{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px;margin-top:-4px}
 .edlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
 .edlist li{display:flex;align-items:center;gap:4px;font-size:13px;min-width:0}
 .edlist .edbtn{flex:1;display:flex;align-items:center;gap:8px;text-align:left;padding:6px 8px;border-color:transparent;background:none;font-size:13px;min-width:0}
@@ -212,9 +213,21 @@ a{color:var(--accent)}
 .spark .s-alerta{stroke:var(--alert)} .spark circle.s-alerta{fill:var(--alert)}
 .spark .s-atencao{stroke:var(--warn)} .spark circle.s-atencao{fill:var(--warn)}
 .spark .s-exon{stroke:var(--accent)} .spark circle.s-exon{fill:var(--accent)}
-.spark circle.pt{cursor:pointer;stroke-width:0}
-.spark circle.pt:hover,.spark circle.pt:focus-visible{stroke:var(--ink);stroke-width:2;outline:none}
-.spark circle.cur{stroke:var(--sheet);stroke-width:2}
+.spark svg.tall{height:auto}
+.spark .bar-alerta{fill:var(--alert)} .spark .bar-atencao{fill:var(--warn)}
+.spark .eixo{font:10px var(--f-mono);fill:var(--muted)}
+.spark .pt{cursor:pointer;outline:none}
+.spark .pt .hit{fill:transparent;stroke:none}
+.spark .pt:hover .hit,.spark .pt:focus-visible .hit{fill:color-mix(in srgb, var(--calm) 16%, transparent)}
+.spark .pt:focus-visible .hit{stroke:var(--ink);stroke-width:1}
+.spark .pt.cur .hit{fill:var(--accent-soft)}
+.spark .leg{display:flex;gap:10px;font-size:11px;color:var(--muted)}
+.spark .leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.supl{display:inline-flex;vertical-align:-2px;color:var(--muted);margin-left:2px}
+.termos li.vazia{background:none;padding:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px;border-radius:0}
+.sugs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sugs button{font:500 12px var(--f-mono);padding:4px 10px;border-radius:999px}
+.edlist .mais{border:0;background:none;color:var(--accent);font-size:13px;padding:6px 8px;text-align:left;text-decoration:underline}
 
 /* Cartão que vira imagem pra mandar no WhatsApp: sempre no tema claro, fora da tela */
 .shot{--paper:#f4f7f6; --sheet:#ffffff; --ink:#13222b; --muted:#56666e; --line:#d6dfdc; --accent:#0d6b5f; --alert:#b42318; --warn:#a15c07;
@@ -243,7 +256,13 @@ a{color:var(--accent)}
     <h3>Calendário do DOE</h3>
     <div class="calhead"><button type="button" id="cal-prev" aria-label="Mês anterior">‹</button><span id="cal-mes" aria-live="polite"></span><button type="button" id="cal-next" aria-label="Próximo mês">›</button></div>
     <div class="cal" id="cal"></div>
-    <ul class="legenda muted small"><li><span class="dot rotina"></span><span>analisado, na cor do pior nível</span></li><li><span class="dot"></span><span>tem edição, ainda não analisado</span></li></ul>
+    <span class="muted small">Cor do pior nível do dia:</span>
+    <ul class="legenda cal-leg muted small">
+      <li><span class="dot alerta"></span><span>com alerta</span></li>
+      <li><span class="dot atencao"></span><span>com atenção</span></li>
+      <li><span class="dot rotina"></span><span>só rotina</span></li>
+      <li><span class="dot"></span><span>não analisado</span></li>
+    </ul>
   </div>
   <div class="panel">
     <h3>Edições analisadas</h3>
@@ -548,7 +567,8 @@ async function abrirSalvo(key, extra){
     const x = await Relatorios.get(key);
     if (!x) return false;
     render(x.r, false, { em: x.em, ...extra });
-    if (!extra) { status('Relatório aberto do histórico deste navegador.'); scrollTo({ top: 0, behavior: 'smooth' }); }
+    // o selo "Relatório guardado em…" do card já diz de onde veio; a linha de status fica limpa
+    if (!extra) { status(''); scrollTo({ top: 0, behavior: 'smooth' }); }
     return true;
   } catch { return false; }
 }
@@ -607,17 +627,22 @@ function edicoesPorDia(){
   return [...[...porIso.values()].sort((a, b) => b.iso.localeCompare(a.iso)), ...semData];
 }
 const resumoNivel = x => x.alerta ? `${x.alerta} ${x.alerta > 1 ? 'alertas' : 'alerta'}` : x.atencao ? `${x.atencao} atenção` : 'rotina';
+const SUPL = '<span class="supl" role="img" aria-label="inclui suplemento" title="inclui suplemento"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8l4 4v10H8z"/><path d="M4 7v14h12"/></svg></span>';
+const HIST_VISIVEIS = 5;
+let histTodas = false;
 // Tudo que depende do histórico: lista de edições, calendário e tendência
 function renderHistory(){
-  const h = edicoesPorDia();
+  const h = edicoesPorDia(), visiveis = histTodas ? h : h.slice(0, HIST_VISIVEIS);
   $('limpar').hidden = !h.length;
   $('hist').innerHTML = h.length
-    ? h.map((x, i) => `<li><button type="button" class="edbtn" data-i="${i}" title="${esc(x.key)} · ${salvos.has(x.key) ? 'abrir o relatório guardado' : 'relatório não guardado: analisar de novo'}">
-          <span class="dot ${nivelDe(x)}" aria-hidden="true"></span><span class="edtxt${salvos.has(x.key) ? '' : ' nsalvo'}"><b>${x.iso ? ddmm(x.iso) : '—'}</b> · ${esc((x.key.match(/nº \d+/) || [curto(x.key)])[0])}${/suplemento/.test(x.key) ? ' <span class="muted">+S</span>' : ''}
+    ? visiveis.map((x, i) => `<li><button type="button" class="edbtn" data-i="${i}" title="${esc(x.key)} · ${salvos.has(x.key) ? 'abrir o relatório guardado' : 'relatório não guardado: analisar de novo'}">
+          <span class="dot ${nivelDe(x)}" aria-hidden="true"></span><span class="edtxt${salvos.has(x.key) ? '' : ' nsalvo'}"><b>${x.iso ? ddmm(x.iso) : '—'}</b> · ${esc((x.key.match(/nº \d+/) || [curto(x.key)])[0])}${/suplemento/.test(x.key) ? ' ' + SUPL : ''}
           <small aria-label="${x.alerta} alertas, ${x.atencao} atenção, ${x.rotina} rotina${salvos.has(x.key) ? '' : '; relatório não guardado'}">${resumoNivel(x)}${salvos.has(x.key) ? '' : ' · não guardado'}</small></span></button>
         ${x.iso ? `<button type="button" class="icon" data-again="${esc(x.iso)}" aria-label="Analisar de novo ${esc(curto(x.key))}" title="Analisar de novo com as regras atuais">↻</button>` : ''}</li>`).join('')
+      + (h.length > HIST_VISIVEIS ? `<li><button type="button" class="mais" id="hist-mais" aria-expanded="${histTodas}">${histTodas ? 'Mostrar só as 5 mais recentes' : `Ver todas (${h.length})`}</button></li>` : '')
     : `<li class="muted small">As edições que você analisar aparecem aqui, pra abrir de novo.</li>`;
   $('hist').querySelectorAll('[data-i]').forEach(b => b.onclick = () => abrirDoHistorico(h[+b.dataset.i]));
+  if ($('hist-mais')) $('hist-mais').onclick = () => { histTodas = !histTodas; renderHistory(); $('hist-mais').focus(); };
   $('hist').querySelectorAll('[data-again]').forEach(b => b.onclick = () => reanalisar(b.dataset.again));
   renderTrend();
   renderCal();
@@ -631,33 +656,51 @@ $('limpar').addEventListener('click', async () => {
   renderDias();
 });
 
-// Tendência: 3 mini-gráficos (cada um com sua escala) das últimas 20 edições analisadas, por data
+// Tendência das últimas 20 edições analisadas (uma por dia), sempre com zero na base: barras empilhadas
+// de alertas (embaixo) e atenção (em cima) e, num gráfico separado, a linha de exonerações no Estado
 function renderTrend(){
-  const pts = edicoesPorDia().filter(x => x.iso).reverse().slice(-20);
-  if (pts.length < 2) { $('trend').innerHTML = `<p class="muted small" style="margin:0">Analise pelo menos duas edições pra ver a tendência.</p>`; return; }
+  const pts = edicoesPorDia().filter(x => x.iso).reverse().slice(-20), n = pts.length;
+  if (n < 2) { $('trend').innerHTML = `<p class="muted small" style="margin:0">Analise pelo menos duas edições pra ver a tendência.</p>`; return; }
   const curKey = current && !isSampleView ? edLabel(current.editions) : '';
-  const W = 252, H = 48, P = 6, x = i => P + i * (W - 2 * P) / (pts.length - 1);
-  const serie = ([campo, rotulo, cls]) => {
-    const vals = pts.map(p => +p[campo] || 0), max = Math.max(1, ...vals), y = v => H - P - v / max * (H - 2 * P);
-    const circles = pts.map((p, i) => `<circle class="pt ${cls}${p.key === curKey ? ' cur' : ''}" cx="${x(i).toFixed(1)}" cy="${y(vals[i]).toFixed(1)}" r="${p.key === curKey ? 5 : 3.5}" tabindex="0" role="button" data-i="${i}"
-        aria-label="${esc(`${ddmm(p.iso)}, ${curto(p.key)}: ${vals[i]} ${rotulo.toLowerCase()}. Abrir edição`)}"><title>${esc(`${ddmm(p.iso)} · ${curto(p.key)}: ${vals[i]}`)}</title></circle>`).join('');
-    return `<div class="spark"><div class="lab"><span>${rotulo}</span><span class="val" data-padrao="${esc(`último <b>${vals[vals.length - 1]}</b> · máx. ${max}`)}">último <b>${vals[vals.length - 1]}</b> · máx. ${max}</span></div>
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="group" aria-label="${esc(rotulo)} nas últimas ${pts.length} edições">
-        <line class="base" x1="${P}" x2="${W - P}" y1="${H - P}" y2="${H - P}"/>
-        <polyline class="${cls}" points="${pts.map((p, i) => `${x(i).toFixed(1)},${y(vals[i]).toFixed(1)}`).join(' ')}"/>${circles}</svg></div>`;
-  };
-  $('trend').innerHTML = `<div class="trend" style="display:flex;flex-direction:column;gap:12px">${[['alerta', 'Alertas', 's-alerta'], ['atencao', 'Atenção', 's-atencao'], ['exon', 'Exonerações no Estado', 's-exon']].map(serie).join('')}</div>
-    <span class="muted small">${ddmm(pts[0].iso)} a ${ddmm(pts[pts.length - 1].iso)} · toque num ponto pra abrir a edição</span>`;
-  $('trend').querySelectorAll('circle.pt').forEach(c => {
-    const go = () => abrirDoHistorico(pts[+c.dataset.i]);
-    // valor do ponto no rótulo do gráfico enquanto o mouse ou o foco estiver nele
-    const val = c.closest('.spark').querySelector('.val');
-    const mostra = () => { const p = pts[+c.dataset.i]; val.innerHTML = `${ddmm(p.iso)} · ${esc(curto(p.key))}: <b>${c.getAttribute('aria-label').match(/: (\d+)/)[1]}</b>`; };
+  const W = 252, H = 66, B = H - 14, P = 2, slot = (W - 2 * P) / n, cx = i => P + slot * (i + 0.5), f = v => v.toFixed(1);
+  // datas no eixo X: primeira, última e umas 3 no meio, sem encavalar
+  const passo = Math.ceil(n / 5), comData = i => i === 0 || i === n - 1 || (i % passo === 0 && n - 1 - i >= passo / 2);
+  const eixo = pts.map((p, i) => comData(i) ? `<text class="eixo" x="${f(i === 0 ? P : i === n - 1 ? W - P : cx(i))}" y="${H - 2}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${ddmm(p.iso)}</text>` : '').join('');
+  const base = `<line class="base" x1="${P}" x2="${W - P}" y1="${B}" y2="${B}"/>`;
+  // cada edição é um alvo clicável/focável da altura do gráfico
+  const alvo = (p, i, txt, corpo) => `<g class="pt${p.key === curKey ? ' cur' : ''}" tabindex="0" role="button" data-i="${i}" data-txt="${esc(txt)}" aria-label="${esc(txt)}. Abrir edição"><rect class="hit" x="${f(P + slot * i)}" y="0" width="${f(slot)}" height="${B}" rx="2"/>${corpo}<title>${esc(txt)}</title></g>`;
+
+  const maxB = Math.max(1, ...pts.map(p => (+p.alerta || 0) + (+p.atencao || 0))), hB = v => v / maxB * (B - 4), bw = Math.min(14, slot * 0.6);
+  const barras = pts.map((p, i) => {
+    const a = +p.alerta || 0, t = +p.atencao || 0, x0 = f(cx(i) - bw / 2);
+    return alvo(p, i, `${ddmm(p.iso)} · ${curto(p.key)}: ${a} ${a === 1 ? 'alerta' : 'alertas'}, ${t} atenção`,
+      (a ? `<rect class="bar-alerta" x="${x0}" y="${f(B - hB(a))}" width="${f(bw)}" height="${f(hB(a))}"/>` : '')
+      + (t ? `<rect class="bar-atencao" x="${x0}" y="${f(B - hB(a) - hB(t))}" width="${f(bw)}" height="${f(hB(t))}"/>` : ''));
+  }).join('');
+
+  const ex = pts.map(p => +p.exon || 0), maxE = Math.max(1, ...ex), ey = v => B - v / maxE * (B - 6);
+  const linha = pts.map((p, i) => alvo(p, i, `${ddmm(p.iso)} · ${curto(p.key)}: ${ex[i]} exonerações no Estado`, '')).join('')
+    + `<polyline class="s-exon" points="${ex.map((v, i) => `${f(cx(i))},${f(ey(v))}`).join(' ')}"/>`
+    + ex.map((v, i) => `<circle class="s-exon" cx="${f(cx(i))}" cy="${f(ey(v))}" r="${pts[i].key === curKey ? 4.5 : 3}" pointer-events="none"/>`).join('');
+
+  const ult = pts[n - 1];
+  const graf = (rotulo, padrao, corpo, leg) => `<div class="spark"><div class="lab"><span>${rotulo}</span><span class="val" data-padrao="${esc(padrao)}">${padrao}</span></div>${leg || ''}
+      <svg class="tall" viewBox="0 0 ${W} ${H}" role="group" aria-label="${esc(rotulo)} nas últimas ${n} edições analisadas">${corpo}${base}${eixo}</svg></div>`;
+  $('trend').innerHTML = `<div style="display:flex;flex-direction:column;gap:14px">`
+    + graf('Alertas e atenção', `último <b>${+ult.alerta || 0}</b> e <b>${+ult.atencao || 0}</b>`, barras,
+      `<div class="leg"><span><i style="background:var(--alert)"></i>alerta</span><span><i style="background:var(--warn)"></i>atenção</span></div>`)
+    + graf('Exonerações no Estado', `último <b>${ex[n - 1]}</b> · máx. ${maxE}`, linha)
+    + `</div><span class="muted small">Toque numa barra ou ponto pra abrir a edição.</span>`;
+  $('trend').querySelectorAll('g.pt').forEach(g => {
+    const go = () => abrirDoHistorico(pts[+g.dataset.i]);
+    // valor da edição no rótulo do gráfico enquanto o mouse ou o foco estiver nela
+    const val = g.closest('.spark').querySelector('.val');
+    const mostra = () => { val.textContent = g.dataset.txt; };
     const volta = () => { val.innerHTML = val.dataset.padrao; };
-    c.addEventListener('mouseenter', mostra); c.addEventListener('focus', mostra);
-    c.addEventListener('mouseleave', volta); c.addEventListener('blur', volta);
-    c.addEventListener('click', go);
-    c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    g.addEventListener('mouseenter', mostra); g.addEventListener('focus', mostra);
+    g.addEventListener('mouseleave', volta); g.addEventListener('blur', volta);
+    g.addEventListener('click', go);
+    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   });
 }
 
@@ -702,23 +745,28 @@ function renderVigLista(){
   const l = loadVig();
   $('vig-lista').innerHTML = l.length
     ? l.map((t, i) => `<li>${esc(t)}<button type="button" data-i="${i}" aria-label="Remover ${esc(t)} da lista de vigia" title="Remover">×</button></li>`).join('')
-    : `<span class="muted small">Ex.: seu nome, sua matrícula, PROGESP. Toda edição aberta mostra no topo onde esses termos aparecem.</span>`;
-  $('vig-lista').querySelectorAll('button').forEach(b => b.onclick = () => { const v = loadVig(); v.splice(+b.dataset.i, 1); saveVig(v); renderVigLista(); renderVigiados(); });
+    : `<li class="vazia"><div class="sugs"><span class="muted small">Sugestões:</span>${['PROGESP', 'SUPLAF', 'SUMOF'].map(t => `<button type="button" data-sug="${t}" aria-label="Vigiar ${t}">+ ${t}</button>`).join('')}</div>
+       <span class="muted small">Ou seu nome, sua matrícula. Toda edição aberta mostra no topo onde esses termos aparecem.</span></li>`;
+  $('vig-lista').querySelectorAll('[data-sug]').forEach(b => b.onclick = () => { addTermo(b.dataset.sug); $('vig-termo').focus(); });
+  $('vig-lista').querySelectorAll('button[data-i]').forEach(b => b.onclick = () => { const v = loadVig(); v.splice(+b.dataset.i, 1); saveVig(v); renderVigLista(); renderVigiados(); });
   $('vig-limpar').hidden = !l.length;
+}
+function addTermo(bruto){
+  const t = bruto.trim().replace(/\s+/g, ' ');
+  if (!t) return false;
+  if (RadarAnalyzer.pareceCpf(t)) { vigMsg('CPF não é buscável (fica mascarado); use nome ou matrícula.', true); return false; }
+  const digits = t.replace(/\D/g, '');
+  if (/^[\d.\-\s\/]+$/.test(t) ? digits.length < 4 : t.length < 3) { vigMsg('Use pelo menos 3 letras ou 4 números.', true); return false; }
+  const l = loadVig();
+  if (l.some(x => x.toLowerCase() === t.toLowerCase())) { vigMsg('Esse termo já está na lista.', true); return false; }
+  l.push(t); saveVig(l);
+  vigMsg(`“${t}” entrou na lista.`);
+  renderVigLista(); renderVigiados();
+  return true;
 }
 $('vig-form').addEventListener('submit', e => {
   e.preventDefault();
-  const t = $('vig-termo').value.trim().replace(/\s+/g, ' ');
-  if (!t) return;
-  if (RadarAnalyzer.pareceCpf(t)) { vigMsg('CPF não é buscável (fica mascarado); use nome ou matrícula.', true); return; }
-  const digits = t.replace(/\D/g, '');
-  if (/^[\d.\-\s\/]+$/.test(t) ? digits.length < 4 : t.length < 3) { vigMsg('Use pelo menos 3 letras ou 4 números.', true); return; }
-  const l = loadVig();
-  if (l.some(x => x.toLowerCase() === t.toLowerCase())) { vigMsg('Esse termo já está na lista.', true); return; }
-  l.push(t); saveVig(l);
-  $('vig-termo').value = '';
-  vigMsg(`“${t}” entrou na lista.`);
-  renderVigLista(); renderVigiados();
+  if (addTermo($('vig-termo').value)) $('vig-termo').value = '';
 });
 $('vig-limpar').addEventListener('click', () => {
   if (!confirm('Limpar a lista de vigia deste navegador?')) return;
