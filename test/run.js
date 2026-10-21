@@ -26,7 +26,7 @@ const CPF_SHAPE = /(^|[^\d.])\d{3}\s?\.\s?\d{3}\s?\.\s?\d{3}(?![\d.])|(^|\D)\d{1
 ].forEach(raw => check(!/\d{3}.?\d{3}/.test(A.maskCpf(raw.replace(/\s+/g, ' '))), `máscara pega "${raw.replace('\n', '\\n')}"`, A.maskCpf(raw)));
 check(A.maskCpf('Processo E:41010.0000014317/2025, CNPJ 33.891.594/0001-27, R$ 115.200,00') === 'Processo E:41010.0000014317/2025, CNPJ 33.891.594/0001-27, R$ 115.200,00', 'máscara não come processo, CNPJ e valor');
 for (const [k, r] of Object.entries(R)) {
-  const strings = [...r.acts.flatMap(a => [a.titulo, a.trecho, a.foco]), ...r.estado.flags.map(f => f.trecho), ...r.segmentos.map(s => s.texto)];
+  const strings = [...r.acts.flatMap(a => [a.titulo, a.trecho, a.foco, a.resumo, a.texto]),...r.estado.flags.map(f => f.trecho), ...r.segmentos.map(s => s.texto)];
   const clean = s => s.replace(/\d{1,3}(\.\d{3}){2,},\d{2}/g, '').replace(/Inscri[cç][aã]o Estadual:?\s*[\d.\-\s]+/gi, ''); // valores em R$ e inscrição estadual
   const leak = strings.map(clean).find(s => CPF_SHAPE.test(s));
   check(!leak, `${k}: nenhum CPF exposto em atos, alertas do Estado ou busca`, leak && leak.slice(Math.max(0, leak.search(CPF_SHAPE) - 60), leak.search(CPF_SHAPE) + 40));
@@ -74,6 +74,31 @@ check(s && s.uncisal.length >= 1, 'busca por matrícula sem o dígito e sem híf
 s = A.search(r6, 'ODILON MÁXIMO');
 check(s && s.outros.length >= 1, 'busca separa o que é de outros órgãos', s && { u: s.uncisal.length, o: s.outros.length });
 check(A.search(r6, 'ab') === null && A.search(r6, '123') === null, 'busca ignora termo curto');
+
+// --- Resumo do que o ato decide e texto completo
+a = find(r6, /PORTARIA\/UNCISAL Nº 3666/);
+check(a && /^1\. Lotar o servidor/.test(a.resumo) && /HOSPITAL ESCOLA DR\. HELVIO AUTO/.test(a.resumo) && /a partir de 19\/10\/2026/.test(a.resumo) && !/no uso de suas atribui/.test(a.resumo),
+  '2906 p.78: resumo da lotação começa no "1. Lotar", tem a unidade e a data, sem preâmbulo', a && a.resumo);
+a = find(r6, /E:41010\.0000002387\/2026/);
+check(a && /n[aã]o-acolhimento|indeferimento/.test(a.resumo), '2906 p.5: resumo do despacho é a conclusão (não-acolhimento/indeferimento)', a && a.resumo);
+a = find(r5, /926107-88\/2026/);
+check(a && /Descart/.test(a.resumo), '2905 p.50: resumo da dispensa emergencial tem "Descartáveis"', a && a.resumo);
+a = find(r5, /EXTRATO: N\.º 1260\/2026/);
+check(a && /^AQUISI[CÇ][AÃ]O DE G[EÊ]NEROS ALIMENT/.test(a.resumo) && !/^EXTRATO/.test(a.resumo), '2905 p.44: resumo do extrato vem do objeto da ata, não do cabeçalho', a && a.resumo);
+a = find(r5, /RECONHECIMENTO DE D[IÍ]VIDA/i);
+check(a && /^RECONHE[CÇ]O a DEA/.test(a.resumo), '2905 p.50: resumo do reconhecimento de dívida começa no "RECONHEÇO"', a && a.resumo);
+a = find(r6, /E:41010\.0000014317\/2025/);
+check(a && /^conclusivo pela possibilidade/.test(a.resumo) && !/\. 2\. /.test(a.resumo), '2906 p.4: resumo da aposentadoria é a conclusão, sem emendar o item 2', a && a.resumo);
+const longos = [...r5.acts, ...r6.acts].filter(x => x.texto && x.texto.length > 900);
+check(longos.length > 0 && longos.every(x => x.texto.length > x.trecho.length), 'ato longo: texto completo é maior que o trecho de 900', longos.length);
+check([...r5.acts, ...r6.acts].every(x => typeof x.resumo === 'string' && x.resumo.length <= 400), 'todo ato tem resumo (pode ser vazio) de no máximo ~320 caracteres');
+// CPF quebrado no fim da linha, dentro do RESOLVE (números fictícios)
+let syn = A.analyze([{ name: 'syn', pages: ['PORTARIA/UNCISAL Nº 9999/2026 A REITORA, no uso de suas atribuições legais, e o que consta no Processo Administrativo nºE:41010.0000099999/2026,\nRESOLVE:\n1. Lotar o servidor FULANO DE TAL SILVA, inscrito no CPF nº123.456.789-\n09, matrícula nº500999, ocupante do cargo de AUXILIAR DE ENFERMAGEM, lotado\nna unidade CENTRO DE CIÊNCIAS INTEGRADORAS do(a) UNIVERSIDADE ESTADUAL DE CIENCIAS DA SAUDE DE ALAGOAS, a partir de 20/10/2026.\nUniversidade Estadual de Ciências da Saúde de Alagoas , em Maceió/AL, 20 de outubro de 2026 .\nFULANA REITORA Protocolo 1199999'] }]);
+check(syn.acts.length === 1 && /^1\. Lotar o servidor FULANO/.test(syn.acts[0].resumo) && /CENTRO DE CI[EÊ]NCIAS INTEGRADORAS/.test(syn.acts[0].resumo)
+  && !/123|789/.test(syn.acts[0].resumo + syn.acts[0].texto), 'CPF quebrado no fim da linha fica mascarado no resumo e no texto completo', syn.acts[0] && syn.acts[0].resumo);
+// processo no formato antigo (41010-7808/14), achado pela auditoria nas edições 2903 e 2891
+syn = A.analyze([{ name: 'syn', pages: ['O GOVERNADOR DO ESTADO, EM DATA DE 13 DE OUTUBRO DE 2026, DESPACHOU O SEGUINTE PROCESSO: PROCs.41010-7808/14, de FULANO DE TAL DA SILVA; E:1800-9800/24, de CICLANO DE TAL = Autorizo, nos termos do parecer. Protocolo 1199998'] }]);
+check(syn.acts.length === 1, 'processo da UNCISAL no formato antigo 41010-NNNN/AA é reconhecido', syn.acts.length);
 
 // --- Lista de vigia
 const v = A.vigiar(r6, ['maria laura dantas', '0500407-1', '05004071', '059.196.354-01', 'ODILON', 'ab']);

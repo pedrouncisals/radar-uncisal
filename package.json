@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node test/run.js",
     "report": "node test/run.js --show",
-    "fixtures": "node test/extract.js amostras"
+    "fixtures": "node test/extract.js amostras",
+    "auditoria": "node test/auditoria.js"
   },
   "devDependencies": {
     "pdfjs-dist": "3.11.174"

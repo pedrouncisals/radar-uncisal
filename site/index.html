@@ -116,6 +116,10 @@ mark{background:var(--mark);color:inherit;padding:0 2px;border-radius:2px}
 details{min-width:0}
 details summary{cursor:pointer;font-size:13px;color:var(--accent);width:max-content;max-width:100%}
 details p{font-size:13px;color:var(--muted);overflow-wrap:anywhere;margin:8px 0 0}
+details p.ato{max-height:22em;overflow-y:auto;padding-right:6px;line-height:1.6}
+.corpo{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cita{margin:0;font-size:13px;overflow-wrap:anywhere}
+.routine-list .corpo .foco{font-size:13px}
 .empty{background:var(--sheet);border:1px dashed var(--line);border-radius:10px;padding:16px;color:var(--muted)}
 
 .groups{display:flex;flex-wrap:wrap;gap:8px}
@@ -272,6 +276,7 @@ a{color:var(--accent)}
   .shell{display:block!important}
   .wrap{padding:0;gap:18px}
   .act,.verdict,.panel{break-inside:avoid}
+  details p.ato{max-height:none;overflow:visible}
 }
 </style>
 
@@ -524,13 +529,29 @@ function renderFilters(){
   $('filters').querySelector('[data-f=""]').setAttribute('aria-pressed', String(!filtro));
 }
 
+// Título sem o preâmbulo: "PORTARIA/UNCISAL Nº 3669/2026 A REITORA, no uso de…" → "PORTARIA/UNCISAL Nº 3669/2026"
+function tituloCurto(a){
+  const t = (a.titulo || '').split(/\s(?:[AO]\s+(?:REITORA?|GOVERNADORA?|SECRET[AÁ]RI[OA]|SECRETARIA|DIRETORA?|DIRETOR-?\s?PRESIDENTE|PRESIDENTE|SUPERINTENDENTE|PROCURADORA?|COORDENADORA?)\b|,?\s*no uso d)/)[0].trim();
+  return t.length >= 8 ? t : (a.titulo || '');
+}
+const UNC_TXT = /UNCISAL|Ci[eê]ncias da Sa[uú]de|41010/i;
+// O que o ato decide em destaque; "Onde cita a UNCISAL" só quando a menção não é o cabeçalho do ato nem está no resumo
+// (ex.: extrato de ata em que a UNCISAL só aparece na demanda por órgão). Relatório guardado antes disso: foco/trecho.
+function corpoAto(a){
+  if (!a.resumo) return `<p class="foco">…${hl(a.foco)}…</p>`;
+  const cita = a.texto && a.texto.search(UNC_TXT) > 150 && !UNC_TXT.test(a.resumo);
+  return `<p class="foco">${hl(a.resumo)}</p>${cita ? `<p class="cita"><span class="muted">Onde cita a UNCISAL:</span> …${hl(a.foco)}…</p>` : ''}`;
+}
+const atoCompleto = a => `<details><summary>${a.texto ? 'Ver ato completo' : 'Ver início do ato'}</summary><p class="ato">${hl(a.texto || a.trecho)}</p></details>`;
+const tituloVisivel = a => { const t = tituloCurto(a); return t && !(a.resumo || '').startsWith(t.slice(0, 40)) ? t : ''; };
 function actCard(r, a){
+  const tt = tituloVisivel(a);
   return `<article class="act ${a.sev}">
       <div class="sev"></div>
       <div class="top"><span class="chip lvl">${LVL[a.sev]}</span>${a.tags.map(t => `<span class="chip">${esc(t)}</span>`).join('')}${a.nomeUnc === false ? `<span class="chip" title="O ato não escreve UNCISAL: foi achado pelo código 41010 do processo ou pelo nome de uma unidade">sem o nome UNCISAL</span>` : ''}<span class="where">${where(r, a)}</span></div>
-      ${a.titulo ? `<div class="ttl">${esc(a.titulo)}</div>` : ''}
-      <p class="foco">…${hl(a.foco)}…</p>
-      <details><summary>Ver início do ato</summary><p>${hl(a.trecho)}</p></details>
+      ${tt ? `<div class="ttl">${esc(tt)}</div>` : ''}
+      <div class="corpo">${corpoAto(a)}</div>
+      ${atoCompleto(a)}
     </article>`;
 }
 // Compras emergenciais viram um cartão só: "3 compras emergenciais nesta edição · 5 nos últimos 7 dias"
@@ -562,7 +583,8 @@ function renderActs(){
     ? r.rotinaGrupos.map(([g, n]) => `<div class="group"><b>${n}</b><span>${esc(g)}</span></div>`).join('')
     : `<div class="empty">Nenhum ato de rotina da UNCISAL.</div>`;
   const rot = r.acts.filter(a => a.sev === 'rotina' && matches(a));
-  $('routine').innerHTML = rot.map(a => `<div><span class="mono muted">${where(r, a)} · ${esc(a.grupo)}</span>${a.titulo ? `<br><b>${esc(a.titulo)}</b>` : ''}<br>${hl(a.foco)}</div>`).join('');
+  $('routine').innerHTML = rot.map(a => { const tt = tituloVisivel(a);
+    return `<div><span class="mono muted">${where(r, a)} · ${esc(a.grupo)}</span>${tt ? `<br><b>${esc(tt)}</b>` : ''}<div class="corpo">${corpoAto(a)}</div>${atoCompleto(a)}</div>`; }).join('');
   $('routine-wrap').hidden = !rot.length;
   $('routine-wrap').open = !!(filtro && rot.length);
 }
@@ -876,12 +898,17 @@ mqMedia.addEventListener('change', layout);
 layout();
 renderVigLista();
 
+// "PORTARIA/UNCISAL Nº 3669/2026: 1. Lotar o servidor…" pro resumo copiado e pra imagem
+function linhaAto(a, max){
+  const s = a.resumo ? `${tituloCurto(a)}: ${a.resumo}` : (a.titulo || a.foco);
+  return s.length > max ? s.slice(0, max).replace(/\s+\S*$/, '') + '…' : s;
+}
 function summaryText(r){
   const c = r.counts, st = r.estado;
   const L = [`Radar UNCISAL · ${edLabel(r.editions)} · ${r.editions.map(e => e.data).filter(Boolean)[0] || ''}`,
     `UNCISAL: ${c.alerta} alerta(s), ${c.atencao} ponto(s) de atenção, ${c.rotina} de rotina.`];
   const hot = r.acts.filter(a => a.sev !== 'rotina');
-  hot.filter(a => !isEmerg(a)).forEach(a => L.push(`- [${LVL[a.sev]}] ${a.tags.join(', ')} (p. ${a.pagina}): ${(a.titulo || a.foco).slice(0, 220)}…`));
+  hot.filter(a => !isEmerg(a)).forEach(a => L.push(`- [${LVL[a.sev]}] ${a.tags.join(', ')} (p. ${a.pagina}): ${linhaAto(a, 260)}`));
   const em = hot.filter(isEmerg);
   if (em.length) L.push(`- [Atenção] ${em.length} compra(s) emergencial(is): ${em.map(a => `${a.objeto || 'ver aviso'} (p. ${a.pagina})`).join('; ')}.`);
   if (r.rotinaGrupos.length) L.push('Rotina: ' + r.rotinaGrupos.map(([g, n]) => `${g} ${n}`).join(', ') + '.');
@@ -908,7 +935,7 @@ function loadScript(src){
 function fillShot(r){
   const c = r.counts, st = r.estado;
   const hot = r.acts.filter(a => a.sev !== 'rotina'), em = hot.filter(isEmerg), rest = hot.filter(a => !isEmerg(a));
-  const items = rest.slice(0, 8).map(a => `<li><span class="lv-${a.sev}">${LVL[a.sev]}</span> · ${esc(a.tags.join(', '))} · p. ${a.pagina}<br>${esc((a.titulo || a.foco).slice(0, 150))}</li>`);
+  const items = rest.slice(0, 8).map(a => `<li><span class="lv-${a.sev}">${LVL[a.sev]}</span> · ${esc(a.tags.join(', '))} · p. ${a.pagina}<br>${esc(linhaAto(a, 200))}</li>`);
   if (em.length) items.push(`<li><span class="lv-atencao">Atenção</span> · ${em.length} ${em.length > 1 ? 'compras emergenciais' : 'compra emergencial'}<br>${esc(em.map(a => a.objeto || `p. ${a.pagina}`).join('; ').slice(0, 200))}</li>`);
   if (rest.length > 8) items.push(`<li>+ ${rest.length - 8} outros atos no relatório</li>`);
   $('shot').innerHTML = `

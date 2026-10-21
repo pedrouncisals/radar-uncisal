@@ -3,7 +3,8 @@
 (function (root) {
   // A UNCISAL aparece pelo nome, pelo código de órgão dos processos (E:41010.… / 4101-…) ou por uma das unidades
   const UNC_NAME = /UNCISAL|Universidade Estadual de Ci[eê]ncias da Sa[uú]de/i;
-  const UNC = /UNCISAL|Universidade Estadual de Ci[eê]ncias da Sa[uú]de|\b4101(?:0\s?\.\s?\d{4,10}|-\d{3,6})\/\d{2,4}|H[eé]lvio Auto|Matern\w*\.?\s+Esc\w*\.?\s+Santa M[oô]nica|Hosp\w*\.?\s+Esc\w*\.?\s+Portugal Ramalho/i;
+  // processo: E:41010.0000014317/2025, 4101-17302/26 e o formato antigo 41010-7808/14 (achado pela auditoria)
+  const UNC = /UNCISAL|Universidade Estadual de Ci[eê]ncias da Sa[uú]de|\b4101(?:0\s?\.\s?\d{4,10}|0?-\d{3,6})\/\d{2,4}|H[eé]lvio Auto|Matern\w*\.?\s+Esc\w*\.?\s+Santa M[oô]nica|Hosp\w*\.?\s+Esc\w*\.?\s+Portugal Ramalho/i;
   // CPF com ou sem pontuação, inclusive com espaço antes do dígito ("240.316.234 -53") ou quebrado na linha
   const maskCpf = s => s.replace(/(^|\D)(\d{3}\s?\.?\s?\d{3}\s?\.?\s?\d{3}\s?-?\s?\d\s?\d)(?!\d)/g, '$1•••');
   const norm = s => s.replace(/\s+/g, ' ').replace(/Oicial/g, 'Oficial').replace(/Certiicada/g, 'Certificada').trim();
@@ -107,6 +108,55 @@
     if (text.length <= MAX || k < 1500) return text.slice(0, MAX);
     return text.slice(0, 500) + ' […] ' + text.slice(Math.max(500, k - 1000), k + 1100);
   }
+  // Resumo do que o ato decide, pra não mostrar só o preâmbulo ("A REITORA, no uso de suas atribuições…"):
+  // depois do RESOLVE; a conclusão do despacho da PGE; o objeto do extrato/contrato; a modalidade e o objeto do aviso.
+  const corta = (s, max = 320) => {
+    s = s.replace(/\s+/g, ' ').replace(/^[\s:,.;-]+/, '').trim();
+    if (s.length <= max) return s;
+    const c = s.slice(0, max);
+    return c.slice(0, Math.max(c.lastIndexOf(' '), max - 40)).replace(/[\s,;:]+$/, '') + '…';
+  };
+  // onde a parte dispositiva termina: vigência, "Publique-se", local e data, assinatura, protocolo
+  const FIM_RESOLVE = /\s(?:Est[ae] (?:[Pp]ortaria|[Rr]esolu[cç][aã]o|[Dd]ecreto|[Aa]to)\b|Publique-se|Registre-se|Cumpra-se|D[eê]-se ci[eê]ncia|PAL[AÁ]CIO REP[UÚ]BLICA DOS PALMARES|(?:Secretaria|Gabinete|Universidade|Procuradoria|Ag[eê]ncia|Instituto|Funda[cç][aã]o|Controladoria)[^.]{0,120}?,\s*em Macei|Macei[oó]\s*\/?\s*AL\s*,|Macei[oó],\s*\d|Protocolo \d)/;
+  const FIM_OBJETO = /\s(?:\*|DO PRAZO|DO VALOR|VALOR|VIG[EÊ]NCIA|DOTA[CÇ][AÃ]O|FUNDAMENTO|DATA DE|CONTRATAD[AO]|DOS SIGNAT|ITENS REGISTRADOS|DEMANDA POR|FORNECEDOR|Valor|Vig[eê]ncia|Prazo)/;
+  // primeira frase de s: ponto seguido de maiúscula, ignorando abreviações (n., art., Doc., Lei nº 8.638…)
+  function frase(s, max = 360) {
+    const re = /\.(?=\s+[A-ZÀ-Ú(“"]|\s+\d{1,2}\.\s|\s*$)/g;   // frase seguinte ou item numerado ("2. Os efeitos…")
+    let m;
+    while ((m = re.exec(s))) {
+      if (m.index < 15 || /\b(?:n|nº|n°|art|arts|doc|Doc|fls|inc|Sr|Sra|Dr|Dra|Prof|Profa|Ltda|p)$/.test(s.slice(Math.max(0, m.index - 6), m.index))) continue;
+      return corta(s.slice(0, m.index + 1), max);
+    }
+    return corta(s, max);
+  }
+  function resumoDe(t, pge) {
+    // "RESOLVE: 1. Lotar…" (sem o verbo); "RECONHEÇO a DEA…", "HOMOLOGO…" (com o verbo)
+    let m = !pge && (t.match(/\bRESOLVE\b\s*[:,]?\s*/i) || t.match(/\b(?:RECONHE[CÇ]O|HOMOLOGO|DETERMINO|AUTORIZO|DECIDE)\b/));
+    if (m) {
+      let r = t.slice(m.index + (/^RESOLVE/i.test(m[0]) ? m[0].length : 0));
+      const f = r.search(FIM_RESOLVE);
+      if (f > 20) r = r.slice(0, f);
+      if (r.trim().length > 15) return corta(r);
+    }
+    const k = t.search(/conclusiv[oa] pel[oa]s?\s|\bopin\w+ pel[oa]s?\s|\bpel[oa] (?:indeferimento|deferimento|possibilidade|impossibilidade|n[aã]o[- ]acolhimento)/i);
+    if (k >= 0) return frase(t.slice(k));
+    m = t.match(/(?:OBJETO(?: DA ATA| CONTRATUAL| DO CONTRATO)?|Objeto(?: do contrato)?)\s*:\s*/);
+    if (m) {
+      let r = t.slice(m.index + m[0].length);
+      const f = r.search(FIM_OBJETO);
+      if (f > 10) r = r.slice(0, f);
+      return corta(r);
+    }
+    m = t.match(/(Dispensa Eletr[oô]nica|Preg[aã]o Eletr[oô]nico|Concorr[eê]ncia(?: Eletr[oô]nica)?|Dispensa|Inexigibilidade)([^.]{0,80}?)(aquisi[cç][aã]o|contrata[cç][aã]o)\s+(?:EMERGENCIAL\s+)?(?:de|da|do|dos|das)\s+([^,.;]{3,200})/i);
+    if (m) return corta(`${m[1]}${/EMERGENCIAL/i.test(m[0]) ? ' emergencial' : ''}: ${m[3].toLowerCase()} de ${m[4]}`);
+    if (pge) { // despacho sem "conclusivo": o que vem depois do número do despacho
+      m = t.match(/DESPACHO[^0-9]{0,40}N?[º°o]?\s*[\d./]+\s*/);
+      if (m) return corta(t.slice(m.index + m[0].length));
+    }
+    return '';
+  }
+  const MAX_TEXTO = 8000;
+
   // Objeto de uma compra: "aquisição EMERGENCIAL de Descartáveis" → "Descartáveis"
   function objeto(text) {
     const m = text.match(/(?:aquisi[cç][aã]o|contrata[cç][aã]o)\s+(?:EMERGENCIAL\s+)?(?:de|da|do|dos|das)\s+([^,.;]{3,90})/i);
@@ -185,6 +235,8 @@
             trecho: text.slice(0, 900),
             foco: text.slice(Math.max(0, k - 160), k + 260),
             objeto: c.tags.includes('Compra emergencial') ? objeto(text) : '',
+            resumo: resumoDe(whole, pge),
+            texto: whole.length > MAX_TEXTO ? whole.slice(0, MAX_TEXTO) + ' […]' : whole,
             nomeUnc: UNC_NAME.test(text),
           });
         }
