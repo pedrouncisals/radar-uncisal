@@ -128,9 +128,29 @@ a = nom.find(x => /RODRIGO/.test(x.nomeado));
 check(a && /^Art\. 1º Fica nomeado RODRIGO CAPELINI/.test(a.resumo) && /Enfermeiro/.test(a.resumo) && !/Art\. 2/.test(a.resumo), '2921 Supl.: resumo do decreto é o Art. 1º (depois do DECRETA), sem o Art. 2º', a && a.resumo);
 s = A.search(sup2921, 'Kelly Mary');
 check(s && s.uncisal.length === 0 && s.outros.length === 1, '2921 Supl.: busca pela nomeada da SESAU cai em outros órgãos', s && { u: s.uncisal.length, o: s.outros.length });
+{ // CPF também fica mascarado no que vai pra "outros" e nos despachos anexados
+  const strs = [...sup2921.outros, ...sup2921.acts.flatMap(x => x.relacionados || [])].flatMap(x => [x.titulo, x.resumo, x.texto, x.trecho || '', x.foco || '']);
+  const sujo = A.analyze([{ name: 'cpf', pages: [sesau('113.699', 'FULANA DE TESTE SILVA', 'Psicólogo').replace('•••', '123.456.789-09')] }]);
+  const leak = [...strs, ...sujo.outros.flatMap(x => [x.titulo, x.resumo, x.texto, x.trecho, x.foco])].find(t => CPF_SHAPE.test(t) || /123\.456/.test(t));
+  check(sujo.outros.length === 1 && !leak, '2921 Supl.: nenhum CPF em "outros órgãos" nem nos despachos anexados', leak);
+}
+
+// --- Na dúvida, fica na UNCISAL: casos em que o filtro de destino não pode esconder o ato
+const decX = (n, proc, meio, art1) => `DECRETO Nº ${n}, DE 6 DE NOVEMBRO DE 2026. ${PREAMB}${proc}, ${meio}${RJU}${art1}${FIM}`;
+let q = A.analyze([{ name: 'qA', pages: [decX('113.700', 'E:41010.0000001111/2026', 'Considerando a necessidade do serviço,',
+  'Art. 1º Fica nomeada FULANA DE TAL SOUZA, inscrita no CPF/MF sob o nº •••, servidora efetiva do Quadro de Pessoal da Secretaria de Estado da Saúde - SESAU, para exercer o cargo em comissão de Diretora do Hospital Escola Hélvio Auto, da Universidade Estadual de Ciências da Saúde de Alagoas - UNCISAL.')] }]);
+check(q.acts.length === 1 && q.outros.length === 0, 'nomeação: efetiva da SESAU nomeada pra comissão na UNCISAL fica na UNCISAL', q.outros.map(x => x.destino));
+q = A.analyze([{ name: 'qB', pages: [sesau('113.701', 'MARIA DAS DORES LIMA', 'Enfermeiro') + decX('113.702', 'E:41010.0000002222/2025', 'Considerando o Edital do Concurso UNCISAL nº 004/2014,',
+  'Art. 1º Fica nomeada MARIA DAS DORES LIMA, inscrita no CPF/MF sob o nº •••, para exercer o cargo de Enfermeiro, com carga horária de 30h (trinta horas) semanais, do Quadro de Pessoal da Universidade Estadual de Ciências da Saúde de Alagoas - UNCISAL, do Serviço Civil do Poder Executivo.')] }]);
+check(q.acts.length === 1 && q.acts[0].destino === 'UNCISAL' && q.outros.length === 1 && q.outros[0].destino === 'SESAU', 'nomeação: mesma pessoa com decreto SESAU e decreto UNCISAL não junta; o da UNCISAL fica', { a: q.acts.map(x => x.destino), o: q.outros.map(x => x.destino) });
+q = A.analyze([{ name: 'qC', pages: [decX('113.703', 'E:41010.0000003333/2026', 'Considerando a vacância de cargo do Quadro de Pessoal da Secretaria de Estado da Saúde - SESAU, redistribuído,',
+  'Art. 1º Fica nomeado JOSE CARLOS PEREIRA, inscrito no CPF/MF sob o nº •••, para exercer o cargo de Médico, na Universidade Estadual de Ciências da Saúde de Alagoas - UNCISAL, do Serviço Civil do Poder Executivo.')] }]);
+check(q.acts.length === 1 && q.acts[0].destino === 'UNCISAL' && q.outros.length === 0, 'nomeação: "Quadro de Pessoal da SESAU" num considerando não conta como destino', q.acts.map(x => x.destino));
+q = A.analyze([{ name: 'qD', pages: ['PORTARIA/UNCISAL Nº 9998/2026 A REITORA, no uso de suas atribuições, considerando que o Decreto nº 1/2026 decreta situação de emergência na saúde, RESOLVE: 1. Lotar o servidor FULANO DE TAL SILVA, matrícula 500999, no HOSPITAL ESCOLA DR. HELVIO AUTO, a partir de 20/10/2026. Universidade Estadual de Ciências da Saúde de Alagoas , em Maceió/AL, 20 de outubro de 2026 . FULANA REITORA Protocolo 1199997'] }]);
+check(q.acts.length === 1 && /^1\. Lotar/.test(q.acts[0].resumo), 'resumo: "decreta" minúsculo num considerando não vira a parte dispositiva', q.acts[0] && q.acts[0].resumo.slice(0, 80));
 
 // --- Lista de vigia
-const v =A.vigiar(r6, ['maria laura dantas', '0500407-1', '05004071', '059.196.354-01', 'ODILON', 'ab']);
+const v = A.vigiar(r6, ['maria laura dantas', '0500407-1', '05004071', '059.196.354-01', 'ODILON', 'ab']);
 check(v[0].uncisal.length === 1 && v[0].uncisal[0].pagina === 4 && !v[0].recusado, 'vigia: nome sem acento acha na UNCISAL', v[0]);
 check(v[1].total >= 1 && v[2].total === v[1].total, 'vigia: matrícula com e sem hífen achando o mesmo', [v[1].total, v[2].total]);
 check(v[3].recusado === 'cpf' && v[3].total === 0, 'vigia: termo com cara de CPF é recusado', v[3]);

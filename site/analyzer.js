@@ -131,7 +131,8 @@
   }
   function resumoDe(t, pge) {
     // "RESOLVE: 1. Lotar…" (sem o verbo); "RECONHEÇO a DEA…", "HOMOLOGO…" (com o verbo)
-    let m = !pge && (t.match(/\b(?:RESOLVE|DECRETA)\b\s*[:,]?\s*/i) || t.match(/\b(?:RECONHE[CÇ]O|HOMOLOGO|DETERMINO|AUTORIZO|DECIDE)\b/));
+    // DECRETA só em maiúscula: "o Decreto nº 1 decreta situação de emergência" num considerando não é a parte dispositiva
+    let m = !pge && (t.match(/\bRESOLVE\b\s*[:,]?\s*/i) || t.match(/\bDECRETA\b\s*[:,]?\s*/) || t.match(/\b(?:RECONHE[CÇ]O|HOMOLOGO|DETERMINO|AUTORIZO|DECIDE)\b/));
     if (m) {
       let r = t.slice(m.index + (/^(?:RESOLVE|DECRETA)/i.test(m[0]) ? m[0].length : 0));
       const f = r.search(FIM_RESOLVE);
@@ -162,8 +163,20 @@
   // "para exercer o cargo de Técnico de Enfermagem, na Universidade Estadual… - UNCISAL". O nome do edital não conta:
   // "Edital nº 003/2002/SEARHP/SESAU/UNCISAL" é conjunto e nomeia gente pras duas.
   const DESTINO = /Quadro de Pessoal d[aeo]s?\s+(.{3,140}?)(?=,|\.\s|\s+do Servi[cç]o)|para exercer o cargo de .{3,160}?,\s*(?:com carga hor[aá]ria[^,]*,\s*)?(?:n[ao]|d[ao])\s+((?:Secretaria|Universidade|Ag[eê]ncia|Funda[cç][aã]o|Instituto|Pol[ií]cia|Procuradoria|Controladoria|Gabinete|Defensoria|Corpo de Bombeiros)[^,]{3,120})/i;
+  // Parte dispositiva do ato (depois do DECRETA/RESOLVE, até a vigência/assinatura). Considerandos e preâmbulo ficam de fora:
+  // "Considerando a vacância no Quadro de Pessoal da SESAU…" não diz pra onde vai o cargo.
+  function dispositivo(text) {
+    const m = text.match(/\b(?:DECRETA|RESOLVE|Resolve)\b|Art\.\s*1[º°o]/);
+    if (!m) return text;
+    const r = text.slice(m.index);
+    const f = r.search(FIM_RESOLVE);
+    return f > 20 ? r.slice(0, f) : r;
+  }
   function destino(text) {
-    const m = text.match(DESTINO);
+    const d = dispositivo(text);
+    // o quadro que conta é o do cargo, não o de origem ("servidora efetiva do Quadro de Pessoal da SESAU, para exercer o cargo… da UNCISAL")
+    const k = d.search(/para exercer o cargo/i);
+    const m = (k >= 0 ? d.slice(k) : d).match(DESTINO);
     if (!m) return '';
     const o = (m[1] || m[2]).trim();
     const sig = o.match(/-\s*([A-Z]{2,}[A-Z/]*)\s*$/);
@@ -191,7 +204,14 @@
     });
     const fora = new Set(), outros = [];
     const rank = { alerta: 0, atencao: 1, rotina: 2 };
-    for (const [nome, g] of grupos) {
+    for (const [nome, g0] of grupos) {
+      const decretos = g0.filter(a => /^DECRETO/.test(a.texto));
+      // dois decretos da mesma pessoa são dois atos (ex.: dois vínculos na saúde, um na SESAU e outro na UNCISAL):
+      // não junta nada e decide o destino de cada um sozinho
+      if (decretos.length > 1) { g0.forEach(a => separa(nome, [a])); continue; }
+      separa(nome, g0);
+    }
+    function separa(nome, g) {
       const main = g.find(a => /^DECRETO/.test(a.texto)) || g[0];
       const rel = g.filter(a => a !== main);
       rel.forEach(a => {
@@ -201,9 +221,11 @@
       });
       if (rel.length) main.relacionados = rel.map(a => ({ edicao: a.edicao, pagina: a.pagina, titulo: a.titulo, resumo: a.resumo, texto: a.texto, tipo: /PGE|Procuradoria/.test(a.texto) && !/^DECRETO/.test(a.texto) ? 'despacho que autoriza o decreto' : 'mesmo ato' }));
       main.nomeado = nome;
-      const d = g.map(a => destino(a.texto)).find(Boolean) || '';
+      // o destino vem do ato principal (o decreto); o despacho não diz o quadro
+      const d = destino(main.texto);
       if (d) main.destino = d;
-      if (d && !UNC_NAME.test(d)) { g.forEach(a => { if (a._seg) a._seg.unc = false; }); fora.add(main); outros.push({ ...main, motivo: `cargo no quadro ${/^[A-Z/]+$/.test(d) ? 'da ' + d : 'de ' + d}` }); }
+      // só sai da lista se o cargo é claramente de outro órgão E a parte dispositiva não cita a UNCISAL (na dúvida, fica)
+      if (d && !UNC_NAME.test(d) && !UNC_NAME.test(dispositivo(main.texto))) { g.forEach(a => { if (a._seg) a._seg.unc = false; }); fora.add(main); outros.push({ ...main, motivo: `cargo no quadro ${/^[A-Z/]+$/.test(d) ? 'da ' + d : 'de ' + d}` }); }
     }
     return { acts: acts.filter(a => !fora.has(a)), outros };
   }
