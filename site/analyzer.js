@@ -48,10 +48,12 @@
     ['Lotação e movimentação', /\blotar\b|\blota[cç][aã]o\b|remo[cç][aã]o|redistribui|cess[aã]o de servidor/i],
     ['Licenças e afastamentos', /licen[cç]a|afastamento|aux[ií]lio por incapacidade/i],
     ['Contratos e obras', CONTRATO],
-    ['Compras e atas', /EXTRATO|ata de registro|registro de pre[cç]os|preg[aã]o|aquisi[cç][aã]o|dispensa eletr|contrata[cç][aã]o direta|licita/i],
+    ['Compras e atas', /EXTRATO|ata de registro|registro de pre[cç]os|preg[aã]o|aquisi[cç][aã]o|dispensa eletr|contrata[cç][aã]o direta|\blicita/i],   // \b: "solicita-se" não é licitação
     ['Adicionais', /insalubridade|periculosidade|adicional/i],
     ['Diárias', /\bdi[aá]rias?\b/i],
     ['Retificação', /retifica|retiica/i],
+    // antes do "Parecer da PGE": o despacho da PGE que autoriza a nomeação é nomeação, e a ordem decide o grupo
+    ['Nomeação e posse', /\bnomea[cç][aã]o|\bnomead[ao]s?\b|\bnomear\b|\bposse\b/i],
     ['Parecer da PGE', /PGE|Procuradoria/i],
     ['Portarias da Reitoria', /PORTARIA\s*\/?\s*UNCISAL/i],
   ];
@@ -191,6 +193,19 @@
     return m && m[1].trim().split(' ').length >= 2 ? foldNome(m[1]) : '';
   }
 
+  // Começo de decreto (o mesmo do HEAD da quebra em atos): "DECRETO Nº 113.641, DE 6 DE NOVEMBRO DE 2026. O GOVERNADOR…"
+  const DEC_HEAD = /DECRETO N[º°o]\s*[\d.]+, DE \d{1,2} DE [A-ZÇ]+ DE \d{4}\.?\s(?:O GOVERNADOR|DECRETO|O PRESIDENTE)/g;
+
+  // Sinais de uma nomeação: precária / por decisão judicial; e decreto de cargo efetivo (cita edital ou concurso)
+  // que não informa a carga horária, o que importa pra folha. Cargo em comissão normalmente não traz carga horária: fica de fora.
+  function sinaisNomeacao(a) {
+    if (!a.tags.includes('Nomeação')) return;
+    if (/car[aá]ter prec[aá]rio|decis[aã]o judicial/i.test(a.texto)) a.precaria = true;
+    const d = dispositivo(a.texto);
+    if (/\bFicam?\s+nomead|RESOLVE,?\s+nomear/i.test(d) && /\bedital\b|\bconcurso\b/i.test(a.texto)
+      && !/cargo em comiss|comissionad/i.test(d) && !/carga hor[aá]ria/i.test(d)) a.semCarga = true;
+  }
+
   // Despacho da PGE (autoriza o decreto) + decreto da mesma pessoa viram um ato só; e, se o cargo é de outro órgão,
   // o grupo inteiro sai da lista da UNCISAL e vai pra "outros" (aparece à parte, fora das contagens).
   function juntarNomeacoes(acts) {
@@ -264,6 +279,15 @@
       }
       estado.anuladas += (full.match(/tornar sem efeito o Decreto[\s\S]{0,160}?que exonerou/gi) || []).length;
       estado.nomeacoes += (full.match(/RESOLVE,?\s+nomear/g) || []).length;
+      // decretos no formato "Art. 1º Fica nomead[ao]…": conta só dentro de DECRETO (o despacho da PGE que autoriza
+      // o decreto não conta, senão a mesma pessoa entra duas vezes). Decreto que nomeia várias pessoas conta 1 (ver item 1).
+      const decs = [...full.matchAll(DEC_HEAD)].map(m => m.index);
+      decs.forEach((ini, i) => {
+        let corpo = full.slice(ini, decs[i + 1] || full.length);
+        const fim = corpo.search(/PAL[AÁ]CIO REP[UÚ]BLICA DOS PALMARES/);
+        if (fim > 0) corpo = corpo.slice(0, fim);
+        if (/\bFicam?\s+nomead[ao]s?\b/.test(corpo) && !/RESOLVE,?\s+nomear/.test(corpo)) estado.nomeacoes++;
+      });
       for (const m of full.matchAll(/([A-ZÀ-Ú]{3,}(?:\s+(?:D[AEO]S?|[A-ZÀ-Ú]{2,}))+)\s+(Governador(?:a)?(?:\s+em\s+exerc[ií]cio)?\b|Presidente d[oa] [^,]{5,70}, no exerc[ií]cio do cargo de Governador)/g)) {
         const k = m[1].trim() + (/exerc/.test(m[2]) ? ' (interino)' : '');
         estado.signers[k] = (estado.signers[k] || 0) + 1;
@@ -322,6 +346,7 @@
     const seen = new Set();
     const dedup = acts.filter(x => { const key = x.edicao + x.trecho.slice(0, 160); if (seen.has(key)) return false; seen.add(key); return true; });
     const { acts: uniq, outros } = juntarNomeacoes(dedup);
+    [...uniq, ...outros].forEach(sinaisNomeacao);
     const rank = { alerta: 0, atencao: 1, rotina: 2 };
     uniq.sort((x, y) => rank[x.sev] - rank[y.sev] || x.pagina - y.pagina);
     outros.sort((x, y) => x.pagina - y.pagina);

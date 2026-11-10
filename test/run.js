@@ -11,6 +11,7 @@ const ED = {
   sup2905: 'SUP5192900290516102026_signed.json',
   e2906: 'DOEAL5193000290619102026_signed.json',
   sup2921: 'SUP5198100292109112026_signed.json',
+  e2921: 'DOEAL5197700292109112026_signed.json',
 };
 const R = Object.fromEntries(Object.entries(ED).map(([k, f]) => [k, A.analyze([load(f)])]));
 
@@ -63,7 +64,8 @@ check(R.sup2905.acts.length === 0, 'suplemento 2905: nada da UNCISAL', R.sup2905
 for (const [k, r] of Object.entries(R)) {
   const bad = r.acts.filter(x => !/^[A-ZÀ-Ú(“"]/.test(x.titulo) && !/^Pessoal|^Contratos|^Comunica/.test(x.titulo));
   check(bad.length === 0, `${k}: todo ato começa no cabeçalho (sem título cortado no meio)`, bad.map(x => x.titulo.slice(0, 50)));
-  const keys = r.acts.map(x => x.edicao + x.pagina + x.foco.slice(-120));
+  // o título entra na chave: portarias em série (2921, p. 101) têm o mesmo fim de trecho, mas número e servidor diferentes
+  const keys = r.acts.map(x => x.edicao + x.pagina + x.titulo + x.foco.slice(-120));
   check(new Set(keys).size === keys.length, `${k}: sem ato repetido`);
 }
 
@@ -164,7 +166,27 @@ check(q.acts.length === 1 && /^1\. Lotar/.test(q.acts[0].resumo), 'resumo: "decr
   check(k && k.uncisal.length === 0 && k.outros.length >= 1, '2921 Supl. (PDF): busca pela nomeada da SESAU cai em outros órgãos', k && { u: k.uncisal.length, o: k.outros.length });
   const leak = [...r.outros, ...nomR.flatMap(x => x.relacionados)].flatMap(x => [x.titulo, x.resumo, x.texto]).find(t => CPF_SHAPE.test(t));
   check(!leak, '2921 Supl. (PDF): nenhum CPF em "outros órgãos" nem nos despachos anexados', leak && leak.slice(Math.max(0, leak.search(CPF_SHAPE) - 60), leak.search(CPF_SHAPE) + 40));
+
+  // Item 2: Estado conta "Fica nomead[ao]" nos decretos (113.641–647 e 113.649–651), não nos despachos da PGE
+  check(r.estado.nomeacoes === 10, '2921 Supl. (PDF): Estado com 10 decretos de nomeação (despachos da PGE não contam)', r.estado.nomeacoes);
+  // Item 7: grupo "Nomeação e posse" (antes caía em "Parecer da PGE")
+  check(nomR.every(x => x.grupo === 'Nomeação e posse'), '2921 Supl. (PDF): nomeações no grupo "Nomeação e posse"', nomR.map(x => x.grupo));
+  // Item 6: precária / decisão judicial; e o decreto da Marcela (113.643) não traz carga horária
+  const por = n => nomR.find(x => x.nomeado.startsWith(n)) || {};
+  check(nomR.every(x => x.precaria), '2921 Supl. (PDF): as 3 nomeações têm o sinal "precária / decisão judicial"', nomR.map(x => [x.nomeado, !!x.precaria]));
+  check(por('MARCELA').semCarga === true && !por('VANDITE').semCarga && !por('RODRIGO').semCarga,
+    '2921 Supl. (PDF): aviso "sem carga horária" só no decreto da Marcela (113.643), não no da Vandite nem no do Rodrigo', nomR.map(x => [x.nomeado, !!x.semCarga]));
 }
+check(sup2921.estado.nomeacoes === 6, '2921 Supl. (sintético): Estado conta os 6 decretos, não os 3 despachos que autorizam', sup2921.estado.nomeacoes);
+check(r6.estado.nomeacoes === 7, '2906: Estado continua com 7 nomeações (formato "RESOLVE nomear")', r6.estado.nomeacoes);
+a = find(r5, /AMANDA KAROL/);
+check(a && a.grupo === 'Nomeação e posse', '2905 p.7: nomeação por decisão judicial vai pro grupo "Nomeação e posse" (antes "Compras e atas" por causa de "solicita-se")', short(a));
+q = A.analyze([{ name: 'qE', pages: [decX('113.704', 'E:41010.0000004444/2026', 'Considerando o resultado do concurso público regido pelo Edital nº 001/2024,',
+  'Art. 1º Fica nomeado JOAO PEDRO ALVES, inscrito no CPF/MF sob o nº •••, para exercer o cargo em comissão de Diretor do Hospital Escola Portugal Ramalho, da Universidade Estadual de Ciências da Saúde de Alagoas - UNCISAL.')] }]);
+check(q.acts.length === 1 && !q.acts[0].semCarga, 'nomeação: cargo em comissão sem carga horária não ganha o aviso, mesmo citando concurso', q.acts[0] && q.acts[0].semCarga);
+
+// --- 2921 normal (09/11/2026): edição sem nada relevante pra UNCISAL continua sem alerta e sem atenção
+check(R.e2921.counts.alerta === 0 && R.e2921.counts.atencao === 0 && R.e2921.outros.length === 0, '2921 (PDF): 0 alerta, 0 atenção, nada em outros órgãos', R.e2921.counts);
 
 // --- Lista de vigia
 const v = A.vigiar(r6, ['maria laura dantas', '0500407-1', '05004071', '059.196.354-01', 'ODILON', 'ab']);

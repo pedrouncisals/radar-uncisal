@@ -107,6 +107,7 @@ section{display:flex;flex-direction:column;gap:14px}
 .maisatos{display:flex;flex-direction:column;gap:4px;min-width:0}
 .act .ttl{font-weight:600;font-size:14px;overflow-wrap:anywhere;min-width:0}
 .chip{font:500 12px/1 var(--f-body);padding:5px 8px;border-radius:999px;background:var(--calm-soft);color:var(--calm)}
+.chip.aviso{background:var(--warn-soft);color:var(--warn)}
 .act.alerta .chip.lvl{background:var(--alert-soft);color:var(--alert)}
 .act.atencao .chip.lvl{background:var(--warn-soft);color:var(--warn)}
 .where{font:12px var(--f-mono);color:var(--muted);margin-left:auto}
@@ -551,12 +552,15 @@ const atoCompleto = a => { const d = `<details><summary>${a.texto ? 'Ver ato com
 // Nomeação: o despacho da PGE que autoriza o decreto vem junto, no mesmo cartão
 const relAto = (r, a) => a.relacionados && a.relacionados.length
   ? `<p class="cita"><span class="muted">Também em:</span> ${a.relacionados.map(x => `${where(r, x)} (${esc(x.tipo)})`).join(' · ')}</p>` : '';
+// Nomeação: sinais que importam pra folha
+const chipsNomeacao = a => (a.precaria ? `<span class="chip" title="O ato fala em caráter precário ou em decisão judicial: a nomeação pode mudar quando o processo na Justiça terminar">precária / decisão judicial</span>` : '')
+  + (a.semCarga ? `<span class="chip aviso" title="É cargo de concurso e o decreto não diz a carga horária. Confira antes de lançar na folha.">sem carga horária</span>` : '');
 const tituloVisivel = a => { const t = tituloCurto(a); return t && !(a.resumo || '').startsWith(t.slice(0, 40)) ? t : ''; };
 function actCard(r, a){
   const tt = tituloVisivel(a);
   return `<article class="act ${a.sev}">
       <div class="sev"></div>
-      <div class="top"><span class="chip lvl">${LVL[a.sev]}</span>${a.tags.map(t => `<span class="chip">${esc(t)}</span>`).join('')}${a.nomeUnc === false ? `<span class="chip" title="O ato não escreve UNCISAL: foi achado pelo código 41010 do processo ou pelo nome de uma unidade">sem o nome UNCISAL</span>` : ''}<span class="where">${where(r, a)}</span></div>
+      <div class="top"><span class="chip lvl">${LVL[a.sev]}</span>${a.tags.map(t => `<span class="chip">${esc(t)}</span>`).join('')}${a.nomeUnc === false ? `<span class="chip" title="O ato não escreve UNCISAL: foi achado pelo código 41010 do processo ou pelo nome de uma unidade">sem o nome UNCISAL</span>` : ''}${chipsNomeacao(a)}<span class="where">${where(r, a)}</span></div>
       ${tt ? `<div class="ttl">${esc(tt)}</div>` : ''}
       <div class="corpo">${corpoAto(a)}${relAto(r, a)}</div>
       ${atoCompleto(a)}
