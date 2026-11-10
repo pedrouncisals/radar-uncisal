@@ -131,11 +131,12 @@
   }
   function resumoDe(t, pge) {
     // "RESOLVE: 1. Lotar…" (sem o verbo); "RECONHEÇO a DEA…", "HOMOLOGO…" (com o verbo)
-    let m = !pge && (t.match(/\bRESOLVE\b\s*[:,]?\s*/i) || t.match(/\b(?:RECONHE[CÇ]O|HOMOLOGO|DETERMINO|AUTORIZO|DECIDE)\b/));
+    let m = !pge && (t.match(/\b(?:RESOLVE|DECRETA)\b\s*[:,]?\s*/i) || t.match(/\b(?:RECONHE[CÇ]O|HOMOLOGO|DETERMINO|AUTORIZO|DECIDE)\b/));
     if (m) {
-      let r = t.slice(m.index + (/^RESOLVE/i.test(m[0]) ? m[0].length : 0));
+      let r = t.slice(m.index + (/^(?:RESOLVE|DECRETA)/i.test(m[0]) ? m[0].length : 0));
       const f = r.search(FIM_RESOLVE);
       if (f > 20) r = r.slice(0, f);
+      r = r.replace(/\s*Art\.\s*\d+[º°o]?\s*$/, '');   // "… do Poder Executivo. Art. 2º" (o Art. 2º é a vigência)
       if (r.trim().length > 15) return corta(r);
     }
     const k = t.search(/conclusiv[oa] pel[oa]s?\s|\bopin\w+ pel[oa]s?\s|\bpel[oa] (?:indeferimento|deferimento|possibilidade|impossibilidade|n[aã]o[- ]acolhimento)/i);
@@ -156,6 +157,56 @@
     return '';
   }
   const MAX_TEXTO = 8000;
+
+  // Nomeação: pra onde vai o cargo. "do Quadro de Pessoal da Secretaria de Estado da Saúde - SESAU" ou
+  // "para exercer o cargo de Técnico de Enfermagem, na Universidade Estadual… - UNCISAL". O nome do edital não conta:
+  // "Edital nº 003/2002/SEARHP/SESAU/UNCISAL" é conjunto e nomeia gente pras duas.
+  const DESTINO = /Quadro de Pessoal d[aeo]s?\s+(.{3,140}?)(?=,|\.\s|\s+do Servi[cç]o)|para exercer o cargo de .{3,160}?,\s*(?:com carga hor[aá]ria[^,]*,\s*)?(?:n[ao]|d[ao])\s+((?:Secretaria|Universidade|Ag[eê]ncia|Funda[cç][aã]o|Instituto|Pol[ií]cia|Procuradoria|Controladoria|Gabinete|Defensoria|Corpo de Bombeiros)[^,]{3,120})/i;
+  function destino(text) {
+    const m = text.match(DESTINO);
+    if (!m) return '';
+    const o = (m[1] || m[2]).trim();
+    const sig = o.match(/-\s*([A-Z]{2,}[A-Z/]*)\s*$/);
+    return sig ? sig[1] : o.slice(0, 60);
+  }
+  // Quem é nomeado: "Fica nomeada, em caráter precário, FULANA DE TAL, inscrita…" (decreto) ou
+  // "autorizo a lavratura do Decreto de nomeação, em caráter precário, de Fulana de Tal, à vista…" (despacho da PGE)
+  const NOMEADO = /nomea(?:d[ao]s?|[cç][aã]o)\s*,?\s*(?:em car[aá]ter prec[aá]rio\s*,?\s*)?(?:de\s+)?([A-ZÀ-Ú][A-Za-zÀ-ú'’ ]{5,90}?)\s*,\s*(?:inscrit|[àa] vista|portador|matr[ií]cula|para exercer)/;
+  const foldNome = s => s.replace(/[^\x00-\x7f]/g, c => c.normalize('NFD')[0]).toUpperCase().replace(/\s+/g, ' ').trim();
+  function nomeado(text) {
+    const m = text.match(NOMEADO);
+    return m && m[1].trim().split(' ').length >= 2 ? foldNome(m[1]) : '';
+  }
+
+  // Despacho da PGE (autoriza o decreto) + decreto da mesma pessoa viram um ato só; e, se o cargo é de outro órgão,
+  // o grupo inteiro sai da lista da UNCISAL e vai pra "outros" (aparece à parte, fora das contagens).
+  function juntarNomeacoes(acts) {
+    const grupos = new Map();
+    acts.forEach(a => {
+      if (!a.tags.includes('Nomeação')) return;
+      const n = nomeado(a.texto);
+      if (!n) return;
+      if (!grupos.has(n)) grupos.set(n, []);
+      grupos.get(n).push(a);
+    });
+    const fora = new Set(), outros = [];
+    const rank = { alerta: 0, atencao: 1, rotina: 2 };
+    for (const [nome, g] of grupos) {
+      const main = g.find(a => /^DECRETO/.test(a.texto)) || g[0];
+      const rel = g.filter(a => a !== main);
+      rel.forEach(a => {
+        fora.add(a);
+        a.tags.forEach(t => { if (!main.tags.includes(t)) main.tags.push(t); });
+        if (rank[a.sev] < rank[main.sev]) main.sev = a.sev;
+      });
+      if (rel.length) main.relacionados = rel.map(a => ({ edicao: a.edicao, pagina: a.pagina, titulo: a.titulo, resumo: a.resumo, texto: a.texto, tipo: /PGE|Procuradoria/.test(a.texto) && !/^DECRETO/.test(a.texto) ? 'despacho que autoriza o decreto' : 'mesmo ato' }));
+      main.nomeado = nome;
+      const d = g.map(a => destino(a.texto)).find(Boolean) || '';
+      if (d) main.destino = d;
+      if (d && !UNC_NAME.test(d)) { g.forEach(a => { if (a._seg) a._seg.unc = false; }); fora.add(main); outros.push({ ...main, motivo: `cargo no quadro ${/^[A-Z/]+$/.test(d) ? 'da ' + d : 'de ' + d}` }); }
+    }
+    return { acts: acts.filter(a => !fora.has(a)), outros };
+  }
 
   // Objeto de uma compra: "aquisição EMERGENCIAL de Descartáveis" → "Descartáveis"
   function objeto(text) {
@@ -228,7 +279,7 @@
           const c = classify(text, pge && pge[3]);
           const k = text.search(UNC);
           seg.unc = true;
-          acts.push({
+          const ato = {
             edicao: edLabel, pagina: pageAt(pStart + Math.max(0, p.search(UNC))),
             sev: c.sev, tags: c.tags, grupo: c.group,
             titulo: pge ? `${pge[3]} · ${pge[2]} · Proc. ${pge[1]}` : text.slice(0, 110),
@@ -238,20 +289,25 @@
             resumo: resumoDe(whole, pge),
             texto: whole.length > MAX_TEXTO ? whole.slice(0, MAX_TEXTO) + ' […]' : whole,
             nomeUnc: UNC_NAME.test(text),
-          });
+          };
+          // o segmento da busca acompanha o ato: se ele for pra "outros órgãos", a busca também deixa de contar como UNCISAL
+          Object.defineProperty(ato, '_seg', { value: seg, enumerable: false });
+          acts.push(ato);
         }
       }
     }
     // remove duplicados
     const seen = new Set();
-    const uniq = acts.filter(x => { const key = x.edicao + x.trecho.slice(0, 160); if (seen.has(key)) return false; seen.add(key); return true; });
+    const dedup = acts.filter(x => { const key = x.edicao + x.trecho.slice(0, 160); if (seen.has(key)) return false; seen.add(key); return true; });
+    const { acts: uniq, outros } = juntarNomeacoes(dedup);
     const rank = { alerta: 0, atencao: 1, rotina: 2 };
     uniq.sort((x, y) => rank[x.sev] - rank[y.sev] || x.pagina - y.pagina);
+    outros.sort((x, y) => x.pagina - y.pagina);
     const rotinaGrupos = {};
     uniq.filter(x => x.sev === 'rotina').forEach(x => { rotinaGrupos[x.grupo] = (rotinaGrupos[x.grupo] || 0) + 1; });
     const exonOrg = Object.entries(estado.exonOrg).sort((a, b) => b[1] - a[1]);
     return {
-      editions, acts: uniq, segmentos,
+      editions, acts: uniq, outros, segmentos,
       counts: { alerta: uniq.filter(x => x.sev === 'alerta').length, atencao: uniq.filter(x => x.sev === 'atencao').length, rotina: uniq.filter(x => x.sev === 'rotina').length },
       rotinaGrupos: Object.entries(rotinaGrupos).sort((a, b) => b[1] - a[1]),
       estado: { exon: estado.exon, exonOrg, anuladas: estado.anuladas, nomeacoes: estado.nomeacoes, signers: Object.entries(estado.signers).sort((a, b) => b[1] - a[1]).slice(0, 4), flags: estado.flags.slice(0, 12) },

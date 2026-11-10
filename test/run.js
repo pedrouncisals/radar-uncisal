@@ -100,8 +100,37 @@ check(syn.acts.length === 1 && /^1\. Lotar o servidor FULANO/.test(syn.acts[0].r
 syn = A.analyze([{ name: 'syn', pages: ['O GOVERNADOR DO ESTADO, EM DATA DE 13 DE OUTUBRO DE 2026, DESPACHOU O SEGUINTE PROCESSO: PROCs.41010-7808/14, de FULANO DE TAL DA SILVA; E:1800-9800/24, de CICLANO DE TAL = Autorizo, nos termos do parecer. Protocolo 1199998'] }]);
 check(syn.acts.length === 1, 'processo da UNCISAL no formato antigo 41010-NNNN/AA é reconhecido', syn.acts.length);
 
+// --- Nomeações do DOE 2921 Supl. (09/11/2026): 3 despachos da PGE (p. 1) + 3 decretos da UNCISAL + decretos da SESAU
+// com o edital conjunto 003/2002/SEARHP/SESAU/UNCISAL. Esperado: 3 atos da UNCISAL (despacho junto do decreto) e os da SESAU à parte.
+const PREAMB = 'O GOVERNADOR DO ESTADO DE ALAGOAS, no uso da atribuição que lhe confere o inciso XVI do art. 107 da Constituição Estadual, tendo em vista o contido no Despacho PGE PJ 31669157 e no Despacho PGE COOPJ 31671663, aprovado pelo Despacho PGE GPG 31710609, todos da Procuradoria Geral do Estado, e o que mais consta do Processo Administrativo nº ';
+const RJU = ' bem como nos arts. 9º, I, e 10 da Lei Estadual nº 5.247, de 26 de julho de 1991 - Regime Jurídico Único dos Servidores Públicos Civis do Estado de Alagoas, DECRETA: ';
+const FIM = ' Art. 2º Este Decreto entra em vigor na data de sua publicação. PALÁCIO REPÚBLICA DOS PALMARES, em Maceió, 6 de novembro de 2026, 208º da Emancipação Política e 136º da República. FULANO DE TAL Governador ';
+const desp = (proc, quem, acao) => `PROC.E:${proc}, do TJ/AL = Nos termos do Despacho PGE PJ 31669157 e do Despacho PGE COOPJ 31671663, aprovado pelo Despacho PGE GPG 31710609, todos da Procuradoria Geral do Estado - PGE, autorizo a lavratura do Decreto de nomeação, em caráter precário, de ${quem}, à vista da decisão judicial, nos autos da Ação Judicial nº ${acao}. Remetam-se os autos à Procuradoria Geral do Estado -PGE para fins de comprovação, perante o Juízo processante, da efetivação da providência e adoção das demais medidas legais cabíveis. Ato contínuo, que o processo seja encaminhado à Universidade Estadual de Ciências da Saúde de Alagoas - UNCISAL, para adoção das providências no âmbito de sua competência. `;
+const dec = (n, proc, edital, art1) => `DECRETO Nº ${n}, DE 6 DE NOVEMBRO DE 2026. ${PREAMB}${proc}, Considerando a decisão judicial proferida nos autos da Ação Judicial nº 0700000-00.2020.8.02.0001; e Considerando o disposto no ${edital},${RJU}${art1}${FIM}`;
+const sesau = (n, nome, cargo) => dec(n, 'E:01204.0000008468/2023', 'Edital nº 003/2002/ SEARHP/SESAU/ UNCISAL', `Art. 1º Fica nomeada, em caráter precário, ${nome}, inscrita no CPF/MF sob o nº •••, para exercer o cargo de ${cargo}, com carga horária de 30h (trinta horas) semanais, do Quadro de Pessoal da Secretaria de Estado da Saúde - SESAU, do Serviço Civil do Poder Executivo.`);
+const sup2921 = A.analyze([{ name: 'syn2921', pages: [
+  'Diário Oficial Estado de Alagoas Poder Executivo SUPLEMENTO Maceió - segunda-feira 9 de novembro de 2026 Ano 114 - Número 2921 GABINETE DO GOVERNADOR O GOVERNADOR DO ESTADO, EM DATA DE 6 DE NOVEMBRO DE 2026, DESPACHOU OS SEGUINTES PROCESSOS: '
+    + desp('41010-5785/25', 'Vandite Araújo dos Santos', '0703966- 37.2016.8.02.0001')
+    + desp('1204-3550/25', 'MARCELA DOS SANTOS SILVA', '0703986-80.2018.8.02.0058')
+    + desp('41010-5566/25', 'RODRIGO CAPELINI DA SILVA', '0727291-02.2020.8.02.0001'),
+  dec('113.641', 'E:41010.0000005785/2025', 'Edital do Concurso UNCISAL nº 003/2014', 'Art. 1º Fica nomeada, VANDITE ARAÚJO DOS SANTOS, inscrita no CPF/MF sob o nº •••, para exercer o cargo de Técnico de Enfermagem Assistência à Saúde, com carga horária de 30h (trinta horas) semanais, do Quadro de Pessoal da Universidade Estadual de Ciências da Saúde de Alagoas - UNCISAL, do Serviço Civil do Poder Executivo.')
+    + dec('113.643', 'E:01204.0000003550/2025', 'Edital do Concurso UNCISAL nº 003/2014', 'Art. 1º Fica nomeada, em caráter precário, MARCELA DOS SANTOS SILVA, inscrita no CPF/MF sob o nº •••, para exercer o cargo de Técnico de Enfermagem, na Universidade Estadual de Ciências da Saúde de Alagoas - UNCISAL, do Serviço Civil do Poder Executivo.'),
+  dec('113.644', 'E:41010.0000005566/2025', 'Edital nº 004/2014, de 20 de outubro de 2014', 'Art. 1º Fica nomeado RODRIGO CAPELINI DA SILVA, inscrito no CPF/MF sob o nº •••, para exercer o cargo de Enfermeiro, com carga horária de 30h (trinta horas) semanais, do Quadro de Pessoal da Universidade Estadual de Ciências da Saúde de Alagoas - UNCISAL, do Serviço Civil do Poder Executivo.')
+    + sesau('113.645', 'KATIANA RÊGO DE LIMA NETTO', 'Psicólogo') + sesau('113.646', 'SILVANA PAULA MENDONÇA DE ALCANTARA LIMA', 'Psicólogo') + sesau('113.647', 'KELLY MARY VIANA DOS SANTOS', 'Administrador'),
+] }]);
+const nom = sup2921.acts.filter(x => x.tags.includes('Nomeação'));
+check(nom.length === 3, '2921 Supl.: 3 nomeações da UNCISAL (eram 9: despacho + decreto contados 2 vezes e SESAU junto)', nom.map(x => x.nomeado + ' p.' + x.pagina));
+check(nom.every(x => /^DECRETO/.test(x.texto) && x.relacionados && x.relacionados.length === 1 && x.relacionados[0].pagina === 1 && x.destino === 'UNCISAL'),
+  '2921 Supl.: cada nomeação é o decreto, com o despacho da PGE da p. 1 junto', nom.map(x => [x.nomeado, x.destino, (x.relacionados || []).map(y => y.pagina)]));
+check(sup2921.outros.length === 3 && sup2921.outros.every(x => x.destino === 'SESAU' && /SESAU/.test(x.motivo)), '2921 Supl.: as 3 nomeações do quadro da SESAU (edital conjunto) ficam à parte', sup2921.outros.map(x => [x.nomeado, x.destino]));
+check(sup2921.counts.atencao === 3, '2921 Supl.: contagem de atenção = 3', sup2921.counts);
+a = nom.find(x => /RODRIGO/.test(x.nomeado));
+check(a && /^Art\. 1º Fica nomeado RODRIGO CAPELINI/.test(a.resumo) && /Enfermeiro/.test(a.resumo) && !/Art\. 2/.test(a.resumo), '2921 Supl.: resumo do decreto é o Art. 1º (depois do DECRETA), sem o Art. 2º', a && a.resumo);
+s = A.search(sup2921, 'Kelly Mary');
+check(s && s.uncisal.length === 0 && s.outros.length === 1, '2921 Supl.: busca pela nomeada da SESAU cai em outros órgãos', s && { u: s.uncisal.length, o: s.outros.length });
+
 // --- Lista de vigia
-const v = A.vigiar(r6, ['maria laura dantas', '0500407-1', '05004071', '059.196.354-01', 'ODILON', 'ab']);
+const v =A.vigiar(r6, ['maria laura dantas', '0500407-1', '05004071', '059.196.354-01', 'ODILON', 'ab']);
 check(v[0].uncisal.length === 1 && v[0].uncisal[0].pagina === 4 && !v[0].recusado, 'vigia: nome sem acento acha na UNCISAL', v[0]);
 check(v[1].total >= 1 && v[2].total === v[1].total, 'vigia: matrícula com e sem hífen achando o mesmo', [v[1].total, v[2].total]);
 check(v[3].recusado === 'cpf' && v[3].total === 0, 'vigia: termo com cara de CPF é recusado', v[3]);

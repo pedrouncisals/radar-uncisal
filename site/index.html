@@ -104,6 +104,7 @@ section{display:flex;flex-direction:column;gap:14px}
 .sev{grid-row:1 / span 4;width:4px;border-radius:2px;background:var(--calm)}
 .act.alerta .sev{background:var(--alert)} .act.atencao .sev{background:var(--warn)}
 .act .top{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.maisatos{display:flex;flex-direction:column;gap:4px;min-width:0}
 .act .ttl{font-weight:600;font-size:14px;overflow-wrap:anywhere;min-width:0}
 .chip{font:500 12px/1 var(--f-body);padding:5px 8px;border-radius:999px;background:var(--calm-soft);color:var(--calm)}
 .act.alerta .chip.lvl{background:var(--alert-soft);color:var(--alert)}
@@ -341,6 +342,7 @@ a{color:var(--accent)}
   <section>
     <div class="sechead"><h2>Alertas e pontos de atenção</h2><span class="muted" id="hl-note"></span></div>
     <div class="list" id="hot"></div>
+    <details id="outros-wrap" hidden><summary id="outros-sum"></summary><p class="muted" style="font-size:13px;margin:8px 0 0">Citam a UNCISAL (por exemplo, no edital conjunto SESAU/UNCISAL), mas o cargo é de outro órgão. Não entram nas contagens.</p><div class="routine-list" id="outros"></div></details>
   </section>
 
   <section>
@@ -542,7 +544,13 @@ function corpoAto(a){
   const cita = a.texto && a.texto.search(UNC_TXT) > 150 && !UNC_TXT.test(a.resumo);
   return `<p class="foco">${hl(a.resumo)}</p>${cita ? `<p class="cita"><span class="muted">Onde cita a UNCISAL:</span> …${hl(a.foco)}…</p>` : ''}`;
 }
-const atoCompleto = a => `<details><summary>${a.texto ? 'Ver ato completo' : 'Ver início do ato'}</summary><p class="ato">${hl(a.texto || a.trecho)}</p></details>`;
+// com despacho junto, os "Ver…" vão num bloco só, pra não quebrar a grade do cartão
+const atoCompleto = a => { const d = `<details><summary>${a.texto ? 'Ver ato completo' : 'Ver início do ato'}</summary><p class="ato">${hl(a.texto || a.trecho)}</p></details>`;
+  return a.relacionados && a.relacionados.length
+    ? `<div class="maisatos">${d}${a.relacionados.map(x => `<details><summary>Ver ${esc(x.tipo)} (p. ${x.pagina})</summary><p class="ato">${hl(x.texto || '')}</p></details>`).join('')}</div>` : d; };
+// Nomeação: o despacho da PGE que autoriza o decreto vem junto, no mesmo cartão
+const relAto = (r, a) => a.relacionados && a.relacionados.length
+  ? `<p class="cita"><span class="muted">Também em:</span> ${a.relacionados.map(x => `${where(r, x)} (${esc(x.tipo)})`).join(' · ')}</p>` : '';
 const tituloVisivel = a => { const t = tituloCurto(a); return t && !(a.resumo || '').startsWith(t.slice(0, 40)) ? t : ''; };
 function actCard(r, a){
   const tt = tituloVisivel(a);
@@ -550,7 +558,7 @@ function actCard(r, a){
       <div class="sev"></div>
       <div class="top"><span class="chip lvl">${LVL[a.sev]}</span>${a.tags.map(t => `<span class="chip">${esc(t)}</span>`).join('')}${a.nomeUnc === false ? `<span class="chip" title="O ato não escreve UNCISAL: foi achado pelo código 41010 do processo ou pelo nome de uma unidade">sem o nome UNCISAL</span>` : ''}<span class="where">${where(r, a)}</span></div>
       ${tt ? `<div class="ttl">${esc(tt)}</div>` : ''}
-      <div class="corpo">${corpoAto(a)}</div>
+      <div class="corpo">${corpoAto(a)}${relAto(r, a)}</div>
       ${atoCompleto(a)}
     </article>`;
 }
@@ -586,6 +594,10 @@ function renderActs(){
   $('routine').innerHTML = rot.map(a => { const tt = tituloVisivel(a);
     return `<div><span class="mono muted">${where(r, a)} · ${esc(a.grupo)}</span>${tt ? `<br><b>${esc(tt)}</b>` : ''}<div class="corpo">${corpoAto(a)}</div>${atoCompleto(a)}</div>`; }).join('');
   $('routine-wrap').hidden = !rot.length;
+  const fora = r.outros || [];   // relatório guardado antes disso não tem
+  $('outros-wrap').hidden = !fora.length;
+  $('outros-sum').textContent = `${fora.length} ${fora.length > 1 ? 'atos citam' : 'ato cita'} a UNCISAL, mas ${fora.length > 1 ? 'são' : 'é'} de outro órgão`;
+  $('outros').innerHTML = fora.map(a => `<div><span class="mono muted">${where(r, a)} · ${esc(a.motivo || 'outro órgão')}</span><div class="corpo">${corpoAto(a)}${relAto(r, a)}</div>${atoCompleto(a)}</div>`).join('');
   $('routine-wrap').open = !!(filtro && rot.length);
 }
 
@@ -912,6 +924,11 @@ function summaryText(r){
   const em = hot.filter(isEmerg);
   if (em.length) L.push(`- [Atenção] ${em.length} compra(s) emergencial(is): ${em.map(a => `${a.objeto || 'ver aviso'} (p. ${a.pagina})`).join('; ')}.`);
   if (r.rotinaGrupos.length) L.push('Rotina: ' + r.rotinaGrupos.map(([g, n]) => `${g} ${n}`).join(', ') + '.');
+  const fora = r.outros || [];
+  if (fora.length) {
+    const por = {}; fora.forEach(a => { por[a.destino || 'outro órgão'] = (por[a.destino || 'outro órgão'] || 0) + 1; });
+    L.push(`Fora da UNCISAL (citam a UNCISAL, cargo é de outro órgão): ${Object.entries(por).map(([o, n]) => `${n} ${o}`).join(', ')}.`);
+  }
   L.push(`Estado: ${st.exon} exonerações${st.anuladas ? `, ${st.anuladas} anuladas` : ''}, ${st.nomeacoes} nomeações.` + (st.exonOrg.length ? ' Mais: ' + st.exonOrg.slice(0, 4).map(([o, n]) => `${o} ${n}`).join(', ') + '.' : ''));
   L.push('O Radar acha por palavra-chave: confira cada ato no DOE.');
   return L.join('\n');
