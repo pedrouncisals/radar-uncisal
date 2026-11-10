@@ -10,6 +10,7 @@ const ED = {
   e2905: 'DOEAL5192800290516102026_signed.json',
   sup2905: 'SUP5192900290516102026_signed.json',
   e2906: 'DOEAL5193000290619102026_signed.json',
+  sup2921: 'SUP5198100292109112026_signed.json',
 };
 const R = Object.fromEntries(Object.entries(ED).map(([k, f]) => [k, A.analyze([load(f)])]));
 
@@ -148,6 +149,22 @@ q = A.analyze([{ name: 'qC', pages: [decX('113.703', 'E:41010.0000003333/2026', 
 check(q.acts.length === 1 && q.acts[0].destino === 'UNCISAL' && q.outros.length === 0, 'nomeação: "Quadro de Pessoal da SESAU" num considerando não conta como destino', q.acts.map(x => x.destino));
 q = A.analyze([{ name: 'qD', pages: ['PORTARIA/UNCISAL Nº 9998/2026 A REITORA, no uso de suas atribuições, considerando que o Decreto nº 1/2026 decreta situação de emergência na saúde, RESOLVE: 1. Lotar o servidor FULANO DE TAL SILVA, matrícula 500999, no HOSPITAL ESCOLA DR. HELVIO AUTO, a partir de 20/10/2026. Universidade Estadual de Ciências da Saúde de Alagoas , em Maceió/AL, 20 de outubro de 2026 . FULANA REITORA Protocolo 1199997'] }]);
 check(q.acts.length === 1 && /^1\. Lotar/.test(q.acts[0].resumo), 'resumo: "decreta" minúsculo num considerando não vira a parte dispositiva', q.acts[0] && q.acts[0].resumo.slice(0, 80));
+
+// --- 2921 Supl. real (PDF do DOE de 09/11/2026): o mesmo esperado do caso sintético acima
+{
+  const r = R.sup2921, nomR = r.acts.filter(x => x.tags.includes('Nomeação'));
+  const nomes = nomR.map(x => x.nomeado).sort();
+  check(nomR.length === 3 && nomes.join('|') === 'MARCELA DOS SANTOS SILVA|RODRIGO CAPELINI DA SILVA|VANDITE ARAUJO DOS SANTOS',
+    '2921 Supl. (PDF): 3 nomeações da UNCISAL (Vandite, Marcela, Rodrigo)', nomR.map(x => x.nomeado + ' p.' + x.pagina));
+  check(nomR.every(x => /^DECRETO/.test(x.texto) && x.destino === 'UNCISAL' && x.relacionados && x.relacionados.length === 1 && x.relacionados[0].pagina === 1 && /despacho/.test(x.relacionados[0].tipo)),
+    '2921 Supl. (PDF): cada decreto traz o seu despacho da PGE da p. 1 (cada despacho virou um ato)', nomR.map(x => [x.nomeado, x.destino, (x.relacionados || []).map(y => y.pagina)]));
+  check(r.outros.length === 3 && r.outros.every(x => x.destino === 'SESAU'), '2921 Supl. (PDF): 3 nomeações da SESAU à parte', r.outros.map(x => [x.nomeado, x.destino]));
+  check(r.counts.atencao === 3 && r.counts.alerta === 0, '2921 Supl. (PDF): contagem de atenção = 3', r.counts);
+  const k = A.search(r, 'Kelly Mary Viana');
+  check(k && k.uncisal.length === 0 && k.outros.length >= 1, '2921 Supl. (PDF): busca pela nomeada da SESAU cai em outros órgãos', k && { u: k.uncisal.length, o: k.outros.length });
+  const leak = [...r.outros, ...nomR.flatMap(x => x.relacionados)].flatMap(x => [x.titulo, x.resumo, x.texto]).find(t => CPF_SHAPE.test(t));
+  check(!leak, '2921 Supl. (PDF): nenhum CPF em "outros órgãos" nem nos despachos anexados', leak && leak.slice(Math.max(0, leak.search(CPF_SHAPE) - 60), leak.search(CPF_SHAPE) + 40));
+}
 
 // --- Lista de vigia
 const v = A.vigiar(r6, ['maria laura dantas', '0500407-1', '05004071', '059.196.354-01', 'ODILON', 'ab']);
